@@ -1,0 +1,72 @@
+{
+	"name": "spotify-controller",
+	"productName": "Spotify Controller",
+	"version": "0.1.0",
+	"description": "The best app ever",
+	"license": "MIT",
+	"repository": "josephdadams/spotify-controller",
+	"author": {
+		"name": "Joseph Adams",
+		"email": "josephdadams@gmail.com",
+		"url": "https://josephadams.dev"
+	},
+	"scripts": {
+		"postinstall": "electron-builder install-app-deps",
+		"lint": "xo",
+		"test": "npm run lint",
+		"start": "electron .",
+		"pack": "electron-builder --dir",
+		"dist": "electron-builder --macos",
+		"release": "np"
+	},
+	"dependencies": {
+		"electron-context-menu": "^3.0.0",
+		"electron-debug": "^3.2.0",
+		"electron-store": "^8.0.0",
+		"electron-unhandled": "^3.0.2",
+		"electron-updater": "^4.3.8",
+		"electron-util": "^0.15.1",
+		"express": "^4.18.1",
+		"lodash": "^4.17.21",
+		"socket.io": "^4.5.1",
+		"spotify-node-applescript": "^1.1.1"
+	},
+	"devDependencies": {
+		"electron": "^12.0.6",
+		"electron-builder": "^22.10.5",
+		"np": "^7.5.0",
+		"xo": "^0.39.1"
+	},
+	"xo": {
+		"envs": [
+			"node",
+			"browser"
+		]
+	},
+	"np": {
+		"publish": false,
+		"releaseDraft": false
+	},
+	"build": {
+		"appId": "com.josephadams.spotify-controller",
+		"mac": {
+			"category": "public.app-category.social-networking",
+			"darkModeSupport": true
+		},
+		"dmg": {
+			"iconSize": 160,
+			"contents": [
+				{
+					"x": 180,
+					"y": 170
+				},
+				{
+					"x": 480,
+					"y": 170,
+					"type": "link",
+					"path": "/Applications"
+				}
+			]
+		}
+	}
+}
