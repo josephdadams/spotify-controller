@@ -1,7 +1,7 @@
 {
 	"name": "spotify-controller",
 	"productName": "Spotify Controller",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "The best app ever",
 	"license": "MIT",
 	"repository": "josephdadams/spotify-controller",

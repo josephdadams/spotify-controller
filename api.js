@@ -18,8 +18,11 @@ function updateClients() {
 
 function getState() {
 	spotify.getState(function(err, state) {
-		STATUS.playbackInfo.playbackPosition = state.position;
-		STATUS.state = state;
+		if (state && state.position) {
+			STATUS.playbackInfo.playbackPosition = state.position;
+			STATUS.state = state;
+		}
+		
 		updateClients();
 		return state;
 	});
