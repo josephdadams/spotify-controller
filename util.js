@@ -13,7 +13,14 @@ function showNotification() {
 	if (STATUS.playbackInfo.playerState === 'Playing' && config.get('showNotifications')) {
 		const NOTIFICATION_TITLE = STATUS.playbackInfo.name;
 		const NOTIFICATION_BODY = STATUS.playbackInfo.artist;
-		new Notification({ title: NOTIFICATION_TITLE, subtitle: NOTIFICATION_BODY, icon: icon}).show();
+		new Notification(
+			{
+				title: NOTIFICATION_TITLE,
+				subtitle: NOTIFICATION_BODY,
+				icon: icon,
+				silent: true
+			}
+		).show();
 	}
 }
 
