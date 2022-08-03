@@ -11,6 +11,9 @@ const config = require('./config.js');
 const util = require('./util.js');
 const API = require('./api.js');
 
+const package_json = require('./package.json');
+const VERSION = package_json.version;
+
 let tray;
 
 
@@ -100,6 +103,10 @@ app.on('activate', async () => {
 	tray = new Tray(icon.resize({ width: 24, height: 24 }));
 
 	const contextMenu = Menu.buildFromTemplate([
+		{
+			label: 'Version: ' + VERSION,
+			enabled: false
+		},
 		{
 			label: 'API running on port: ' + config.get('apiPort'),
 			enabled: false
