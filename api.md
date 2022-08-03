@@ -180,6 +180,11 @@ It is possible to disable remote control within the context menu of the spotify-
 {status: 'not-allowed'}
 ```
 
+Errors may also be sent like this:
+```javascript
+{error: 'error message'}
+```
+
 ## socket.io API
 
 Upon connection, the server will emit the `control_status` event to let the client know whether or not remote control is available. This will be emitted any time it is changed. It can also be requested by the client at any time by emitting a `control_status` event. A boolean is returned, with `true` meaning it is enabled, and `false` being disabled.
@@ -192,10 +197,14 @@ Upon connection, the server will emit the `control_status` event to let the clie
 	```
 * `control_status`:
 
-	Returns whether remote control is currently enabled or not in spotify-controller.
+	Returns whether remote control is currently enabled or not in spotify-controller. This will also be emitted on-demand if remote control is disabled at spotify-controller.
 	```javascript
 	true
 	```
+
+* `error`:
+
+	Emitted whenever there is an error. Contains the error message as a string.
 
 * `state`:
 
