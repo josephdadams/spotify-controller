@@ -67,9 +67,6 @@ module.exports = {
 			if (config.get('allowControl')) {
 				try {
 					let track = req.params.track;
-					if (track.indexOf('spotify:track:') == -1) {
-						track = 'spotify:track:' + track;
-					}
 					spotify.playTrack(track);
 					res.send({status: 'playing'});
 				}
@@ -87,9 +84,6 @@ module.exports = {
 				try {
 					let track = req.params.track;
 					let context = req.params.context;
-					if (track.indexOf('spotify:track:') == -1) {
-						track = 'spotify:track:' + track;
-					}
 					spotify.playTrackInContext(track, context);
 					res.send({status: 'playing'});
 				}
