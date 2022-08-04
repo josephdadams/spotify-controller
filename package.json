@@ -1,7 +1,7 @@
 {
 	"name": "spotify-controller",
 	"productName": "Spotify Controller",
-	"version": "0.1.5",
+	"version": "0.1.6",
 	"description": "Control Spotify on MacOS over the network",
 	"license": "MIT",
 	"repository": "josephdadams/spotify-controller",

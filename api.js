@@ -386,9 +386,6 @@ module.exports = {
 			socket.on('playtrack', function (track) {
 				if (config.get('allowControl')) {
 					try {
-						if (track.indexOf('spotify:track:') == -1) {
-							track = 'spotify:track:' + track;
-						}
 						spotify.playTrack(track);
 					}
 					catch(error) {
@@ -403,9 +400,6 @@ module.exports = {
 			socket.on('playtrackincontext', function (track, context) {
 				if (config.get('allowControl')) {
 					try {
-						if (track.indexOf('spotify:track:') == -1) {
-							track = 'spotify:track:' + track;
-						}
 						spotify.playTrackInContext(track, context);
 					}
 					catch(error) {
