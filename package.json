@@ -1,7 +1,7 @@
 {
 	"name": "spotify-controller",
 	"productName": "Spotify Controller",
-	"version": "0.1.6",
+	"version": "0.1.7",
 	"description": "Control Spotify on MacOS over the network",
 	"license": "MIT",
 	"repository": "josephdadams/spotify-controller",
@@ -28,6 +28,7 @@
 		"electron-util": "^0.15.1",
 		"express": "^4.18.1",
 		"lodash": "^4.17.21",
+		"osascript-promise": "^1.0.0",
 		"socket.io": "^4.5.1",
 		"spotify-node-applescript": "^1.1.1"
 	},

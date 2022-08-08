@@ -8,6 +8,8 @@ const config = require('./config.js');
 const package_json = require('./package.json');
 const VERSION = package_json.version;
 
+const osascript = require('osascript-promise');
+
 var server = null;
 var httpServer = null;
 var io = null;
@@ -25,6 +27,40 @@ function getState() {
 		
 		updateClients();
 		return state;
+	});
+}
+
+function rampVolume(volume) {
+	let rampScript = `tell application "Spotify"
+		set currentVolume to get sound volume
+		set desiredVolume to ${volume}
+
+		if currentVolume < desiredVolume then
+			repeat while currentVolume < desiredVolume
+				if currentVolume > desiredVolume then
+					set sound volume to desiredVolume
+				else
+					set sound volume to currentVolume + 5
+				end if
+				set currentVolume to get sound volume
+				delay 0.25
+			end repeat
+		else
+			repeat while currentVolume > desiredVolume
+				if currentVolume < desiredVolume then
+					set sound volume to desiredVolume
+				else
+					set sound volume to currentVolume - 5
+				end if
+				set currentVolume to get sound volume
+				delay 0.25
+			end repeat
+		end if
+		set sound volume to desiredVolume
+	end tell`;
+
+	return osascript(rampScript).then(function(response) {
+		return response;
 	});
 }
 
@@ -191,6 +227,21 @@ module.exports = {
 				try {
 					spotify.setVolume(req.params.volume);
 					res.send({status: 'setvolume'});
+				}
+				catch(error) {
+					res.send({error: error});
+				}				
+			}
+			else {
+				res.send({status: 'not-allowed'});
+			}
+		});
+
+		server.get('/rampVolume/:volume', function (req, res) {
+			if (config.get('allowControl')) {
+				try {
+					rampVolume(parseInt(req.params.volume));
+					res.send({status: 'rampvolume'});
 				}
 				catch(error) {
 					res.send({error: error});
@@ -471,6 +522,20 @@ module.exports = {
 				if (config.get('allowControl')) {
 					try {
 						spotify.setVolume(volume);
+					}
+					catch(error) {
+						socket.emit('error', error);
+					}
+				}
+				else {
+					socket.emit('control_status', false);
+				}
+			});
+
+			socket.on('rampVolume', function (volume) {
+				if (config.get('allowControl')) {
+					try {
+						rampVolume(volume);
 					}
 					catch(error) {
 						socket.emit('error', error);
