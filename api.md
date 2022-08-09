@@ -118,6 +118,13 @@ All requests are HTTP GET.
 	{status: 'setvolume'}
 	```
 
+* `/rampVolume/[volume]`:
+
+	Ramps volume level (0-100). First argument is the volume level as an integer. The volume will ramp in 5% increments every 0.25s until it reaches the desired level.
+	```javascript
+	{status: 'rampvolume'}
+	```
+
 * `/mute`:
 
 	Mutes volume.
@@ -273,6 +280,10 @@ Upon connection, the server will emit the `control_status` event to let the clie
 * `setVolume`:
 
 	Sets volume level (0-100). First argument is the volume level as an integer.
+
+* `rampVolume`:
+
+	Ramps volume level (0-100). First argument is the volume level as an integer. The volume will ramp in 5% increments every 0.25s until it reaches the desired level.
 
 * `mute`:
 
