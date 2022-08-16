@@ -59,6 +59,9 @@ function rampVolume(volume) {
 		set sound volume to desiredVolume
 	end tell`;
 
+	STATUS.playbackInfo.playerState = `Ramping Volume to ${volume}`;
+	updateClients();
+
 	return osascript(rampScript).then(function(response) {
 		return response;
 	});
