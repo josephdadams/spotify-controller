@@ -32,7 +32,6 @@ module.exports = {
 				switch(event) {
 					case 'com.spotify.client.PlaybackStateChanged':
 						STATUS.playbackInfo = _.mapKeys(info, (v, k) => _.camelCase(k));
-						console.log(STATUS);
 						API.sendUpdates();
 						showNotification();
 						break;

@@ -83,6 +83,13 @@ All requests are HTTP GET.
 	{status: 'play-pause-toggled'}
 	```
 
+* `/playerPosition/[seconds]`:
+
+	Moves the player position of the currently playing track forward or backward, in seconds.
+	```javascript
+	{status: 'player-position-changed'}
+	```
+
 * `/next`:
 
 	Goes to next track.
@@ -260,6 +267,10 @@ Upon connection, the server will emit the `control_status` event to let the clie
 * `playToggle`:
 
 	Toggles playback between play/pause.
+
+* `playerPosition`:
+
+	Moves the player position of the currently playing track forward or backward based on the first argument, in seconds.
 
 * `next`:
 

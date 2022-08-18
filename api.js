@@ -67,6 +67,20 @@ function rampVolume(volume) {
 	});
 }
 
+function setPlayerPosition(seconds) {
+	let positionScript = `tell application "Spotify"
+		set currentPosition to get player position
+		set desiredPosition to (currentPosition + ${seconds})
+		set player position to desiredPosition
+	end tell`;
+
+	STATUS.playbackInfo.playerState = `Moving Player Position ${seconds} seconds`;
+
+	return osascript(positionScript).then(function(response) {
+		return response;
+	});
+}
+
 module.exports = {
 	start: function(port) {
 		//starts the REST API
@@ -155,6 +169,21 @@ module.exports = {
 				try {
 					spotify.playPause();
 					res.send({status: 'play-pause-toggled'});
+				}
+				catch(error) {
+					res.send({error: error});
+				}
+			}
+			else {
+				res.send({status: 'not-allowed'});
+			}
+		});
+
+		server.get('/playerPosition/:seconds', function (req, res) {
+			if (config.get('allowControl')) {
+				try {
+					setPlayerPosition(req.params.seconds);
+					res.send({status: 'player-position-changed'});
 				}
 				catch(error) {
 					res.send({error: error});
@@ -436,6 +465,20 @@ module.exports = {
 					socket.emit('control_status', false);
 				}
 			});
+
+			socket.on('playerPosition', function (seconds) {
+				if (config.get('allowControl')) {
+					try {
+						setPlayerPosition(seconds);
+					}
+					catch(error) {
+						socket.emit('error', error);
+					}
+				}
+				else {
+					socket.emit('control_status', false);
+				}
+			});	
 
 			socket.on('playtrack', function (track) {
 				if (config.get('allowControl')) {
