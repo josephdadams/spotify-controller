@@ -71,7 +71,7 @@ All requests are HTTP GET.
 
 * `/pause`:
 
-	Pausess playback.
+	Pauses playback.
 	```javascript
 	{status: 'paused'}
 	```
@@ -83,9 +83,16 @@ All requests are HTTP GET.
 	{status: 'play-pause-toggled'}
 	```
 
-* `/playerPosition/[seconds]`:
+* `/movePlayerPosition/[seconds]`:
 
 	Moves the player position of the currently playing track forward or backward, in seconds.
+	```javascript
+	{status: 'player-position-changed'}
+	```
+
+* `/setPlayerPosition/[seconds]`:
+
+	Sets the player position of the currently playing track to the number of seconds specified.
 	```javascript
 	{status: 'player-position-changed'}
 	```
@@ -268,9 +275,13 @@ Upon connection, the server will emit the `control_status` event to let the clie
 
 	Toggles playback between play/pause.
 
-* `playerPosition`:
+* `movePlayerPosition`:
 
 	Moves the player position of the currently playing track forward or backward based on the first argument, in seconds.
+
+* `setPlayerPosition`:
+
+	Sets the player position of the currently playing track to the number of seconds specified in the first argument.
 
 * `next`:
 

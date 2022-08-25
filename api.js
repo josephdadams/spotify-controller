@@ -23,9 +23,17 @@ function getState() {
 		if (state && state.position) {
 			STATUS.playbackInfo.playbackPosition = state.position;
 			STATUS.state = state;
+
+			spotify.isRepeating(function(err, repeating) {
+				STATUS.state.isRepeating = repeating;
+
+				spotify.isShuffling(function(err, shuffling) {
+					STATUS.state.isShuffling = shuffling;
+
+					updateClients();
+				});
+			});
 		}
-		
-		updateClients();
 		return state;
 	});
 }
@@ -67,7 +75,7 @@ function rampVolume(volume) {
 	});
 }
 
-function setPlayerPosition(seconds) {
+function movePlayerPosition(seconds) {
 	let positionScript = `tell application "Spotify"
 		set currentPosition to get player position
 		set desiredPosition to (currentPosition + ${seconds})
@@ -75,6 +83,19 @@ function setPlayerPosition(seconds) {
 	end tell`;
 
 	STATUS.playbackInfo.playerState = `Moving Player Position ${seconds} seconds`;
+
+	return osascript(positionScript).then(function(response) {
+		return response;
+	});
+}
+
+function setPlayerPosition(seconds) {
+	let positionScript = `tell application "Spotify"
+		set desiredPosition to ${seconds}
+		set player position to desiredPosition
+	end tell`;
+
+	STATUS.playbackInfo.playerState = `Setting Player Position ${seconds} seconds`;
 
 	return osascript(positionScript).then(function(response) {
 		return response;
@@ -179,7 +200,22 @@ module.exports = {
 			}
 		});
 
-		server.get('/playerPosition/:seconds', function (req, res) {
+		server.get('/movePlayerPosition/:seconds', function (req, res) {
+			if (config.get('allowControl')) {
+				try {
+					movePlayerPosition(req.params.seconds);
+					res.send({status: 'player-position-changed'});
+				}
+				catch(error) {
+					res.send({error: error});
+				}
+			}
+			else {
+				res.send({status: 'not-allowed'});
+			}
+		});
+
+		server.get('/setPlayerPosition/:seconds', function (req, res) {
 			if (config.get('allowControl')) {
 				try {
 					setPlayerPosition(req.params.seconds);
@@ -466,10 +502,26 @@ module.exports = {
 				}
 			});
 
-			socket.on('playerPosition', function (seconds) {
+			socket.on('movePlayerPosition', function (seconds) {
+				if (config.get('allowControl')) {
+					try {
+						movePlayerPosition(seconds);
+						getState();
+					}
+					catch(error) {
+						socket.emit('error', error);
+					}
+				}
+				else {
+					socket.emit('control_status', false);
+				}
+			});
+			
+			socket.on('setPlayerPosition', function (seconds) {
 				if (config.get('allowControl')) {
 					try {
 						setPlayerPosition(seconds);
+						getState();
 					}
 					catch(error) {
 						socket.emit('error', error);
@@ -540,6 +592,7 @@ module.exports = {
 				if (config.get('allowControl')) {
 					try {
 						spotify.volumeUp();
+						getState();
 					}
 					catch(error) {
 						socket.emit('error', error);
@@ -554,6 +607,7 @@ module.exports = {
 				if (config.get('allowControl')) {
 					try {
 						spotify.volumeDown();
+						getState();
 					}
 					catch(error) {
 						socket.emit('error', error);
@@ -568,6 +622,7 @@ module.exports = {
 				if (config.get('allowControl')) {
 					try {
 						spotify.setVolume(volume);
+						getState();
 					}
 					catch(error) {
 						socket.emit('error', error);
@@ -582,6 +637,7 @@ module.exports = {
 				if (config.get('allowControl')) {
 					try {
 						rampVolume(volume);
+						getState();
 					}
 					catch(error) {
 						socket.emit('error', error);
@@ -596,6 +652,7 @@ module.exports = {
 				if (config.get('allowControl')) {
 					try {
 						spotify.muteVolume();
+						getState();
 					}
 					catch(error) {
 						socket.emit('error', error);
@@ -610,6 +667,7 @@ module.exports = {
 				if (config.get('allowControl')) {
 					try {
 						spotify.unmuteVolume();
+						getState();
 					}
 					catch(error) {
 						socket.emit('error', error);
@@ -624,6 +682,7 @@ module.exports = {
 				if (config.get('allowControl')) {
 					try {
 						spotify.setRepeating(true);
+						getState();
 					}
 					catch(error) {
 						socket.emit('error', error);
@@ -638,6 +697,7 @@ module.exports = {
 				if (config.get('allowControl')) {
 					try {
 						spotify.setRepeating(false);
+						getState();
 					}
 					catch(error) {
 						socket.emit('error', error);
@@ -652,6 +712,7 @@ module.exports = {
 				if (config.get('allowControl')) {
 					try {
 						spotify.toggleRepeating();
+						getState();
 					}
 					catch(error) {
 						socket.emit('error', error);
@@ -666,6 +727,7 @@ module.exports = {
 				if (config.get('allowControl')) {
 					try {
 						spotify.setShuffling(true);
+						getState();
 					}
 					catch(error) {
 						socket.emit('error', error);
@@ -680,6 +742,7 @@ module.exports = {
 				if (config.get('allowControl')) {
 					try {
 						spotify.setShuffling(false);
+						getState();
 					}
 					catch(error) {
 						socket.emit('error', error);
@@ -694,6 +757,7 @@ module.exports = {
 				if (config.get('allowControl')) {
 					try {
 						spotify.toggleShuffling();
+						getState();
 					}
 					catch(error) {
 						socket.emit('error', error);
@@ -706,7 +770,7 @@ module.exports = {
 		});
 
 		httpServer.listen(port);
-		console.log('REST API server started on: ' + port);
+		console.log('REST/Socket.io API server started on: ' + port);
 	},
 
 	sendUpdates: function() {
