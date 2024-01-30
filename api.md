@@ -132,9 +132,9 @@ All requests are HTTP GET.
 	{status: 'setvolume'}
 	```
 
-* `/rampVolume/[volume]`:
+* `/rampVolume/[volume]/[changePercent]/[rampTime]`:
 
-	Ramps volume level (0-100). First argument is the volume level as an integer. The volume will ramp in 5% increments every 0.25s until it reaches the desired level.
+	Ramps volume level (0-100). First argument is the volume level as an integer. Second argument is the percentage to change the volume in each step. Third argument is the total time to take to finish the volume ramp.
 	```javascript
 	{status: 'rampvolume'}
 	```
@@ -255,6 +255,10 @@ Upon connection, the server will emit the `control_status` event to let the clie
   	}
 	```
 
+* `ramping_state`:
+
+	Returns the current volume ramping state. True or False. If the volume is currently ramping, you cannot change the volume through `volumeUp`, `volumeDown`, or `setVolume` until the ramp finishes.
+
 * `play`:
 
 	Starts playback.
@@ -305,7 +309,7 @@ Upon connection, the server will emit the `control_status` event to let the clie
 
 * `rampVolume`:
 
-	Ramps volume level (0-100). First argument is the volume level as an integer. The volume will ramp in 5% increments every 0.25s until it reaches the desired level.
+	Ramps volume level (0-100). First argument is the volume level as an integer. Second argument is the percentage to change the volume in each step. Third argument is the total time to take to finish the volume ramp.
 
 * `mute`:
 

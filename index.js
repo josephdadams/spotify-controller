@@ -16,11 +16,13 @@ const VERSION = package_json.version;
 
 let tray;
 
-
 global.STATUS = {
 	playbackInfo: {},
-	state: {}
+	state: {},
+	rampingState: false
 };
+
+global.RAMPING = false;
 
 unhandled();
 //debug();

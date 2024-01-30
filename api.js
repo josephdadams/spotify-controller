@@ -16,13 +16,17 @@ var io = null;
 
 function updateClients() {
 	io.sockets.emit('state_change', STATUS);
+	io.sockets.emit('ramping_state', global.RAMPING);
 }
 
 function getState() {
+	updateClients();
+
 	spotify.getState(function(err, state) {
 		if (state && state.position) {
 			STATUS.playbackInfo.playbackPosition = state.position;
 			STATUS.state = state;
+			//STATUS.playbackInfo.playerState = state.state;
 
 			spotify.isRepeating(function(err, repeating) {
 				STATUS.state.isRepeating = repeating;
@@ -38,41 +42,83 @@ function getState() {
 	});
 }
 
-function rampVolume(volume) {
-	let rampScript = `tell application "Spotify"
-		set currentVolume to get sound volume
-		set desiredVolume to ${volume}
+function rampVolume(volume, changePercent = 5, rampTime = 3) {
+	if (global.RAMPING == true) {
+		//currently ramping, cannot ramp again
+		return;
+	}
+	else {
+		global.RAMPING = true;
+		//STATUS.playbackInfo.playerState = `Ramping Volume to ${volume}`;
+		updateClients();
 
-		if currentVolume < desiredVolume then
-			repeat while currentVolume < desiredVolume
-				if currentVolume > desiredVolume then
-					set sound volume to desiredVolume
-				else
-					set sound volume to currentVolume + 5
-				end if
-				set currentVolume to get sound volume
-				delay 0.25
-			end repeat
-		else
-			repeat while currentVolume > desiredVolume
-				if currentVolume < desiredVolume then
-					set sound volume to desiredVolume
-				else
-					set sound volume to currentVolume - 5
-				end if
-				set currentVolume to get sound volume
-				delay 0.25
-			end repeat
-		end if
-		set sound volume to desiredVolume
-	end tell`;
+		let rampScript = `tell application "Spotify"
+			set currentVolume to get sound volume
+			set desiredVolume to ${volume}
 
-	STATUS.playbackInfo.playerState = `Ramping Volume to ${volume}`;
-	updateClients();
+			set changePercent to ${changePercent}
 
-	return osascript(rampScript).then(function(response) {
-		return response;
-	});
+			if changePercent < 1 then
+				set changePercent to 1 --wanting to avoid a divide by zero error
+			end if
+
+			set rampTime to ${rampTime}
+
+			--to avoid a negative delay, we need to know which is higher
+			set higherVolume to currentVolume
+			set lowerVolume to desiredVolume
+
+			if lowerVolume > higherVolume then
+				set higherVolume to desiredVolume
+				set lowerVolume to currentVolume
+			end if
+
+			set totalSteps to (higherVolume - lowerVolume) / changePercent
+
+			if totalSteps < 1 then
+				set totalSteps to 1 --wanting to avoid a divide by zero error
+			end if
+
+			set delayTime to rampTime / totalSteps
+
+			if delayTime < 0.1 then
+				set delayTime to 0.1 --cant have delay time less than .1 second
+			end if
+
+			--display dialog "Ramping Volume from " & currentVolume & " to " & desiredVolume & " over " & rampTime & " seconds with " & totalSteps & " steps: " & delayTime buttons {"OK"} default button 1 with icon 1 giving up after 5
+			
+			if currentVolume < desiredVolume then
+				repeat while currentVolume < desiredVolume
+					if currentVolume > desiredVolume then
+						set sound volume to desiredVolume
+					else
+						set sound volume to currentVolume + changePercent
+					end if
+					set currentVolume to get sound volume
+					delay delayTime
+				end repeat
+			else
+				repeat while currentVolume > desiredVolume
+					if currentVolume < desiredVolume then
+						set sound volume to desiredVolume
+					else
+						set sound volume to currentVolume - changePercent
+					end if
+					set currentVolume to get sound volume
+					delay delayTime
+				end repeat
+			end if
+			set sound volume to desiredVolume
+			
+		end tell`;
+	
+		return osascript(rampScript).then(function(response) {
+			global.RAMPING = false;
+			updateClients();
+			getState();
+			return response;
+		});
+	}
 }
 
 function movePlayerPosition(seconds) {
@@ -263,8 +309,13 @@ module.exports = {
 		server.get('/volumeUp', function (req, res) {
 			if (config.get('allowControl')) {
 				try {
-					spotify.volumeUp();
-					res.send({status: 'volume-up'});
+					if (global.RAMPING == false) { //don't set a volume if we're ramping
+						spotify.volumeUp();
+						res.send({status: 'volume-up'});
+					}
+					else {
+						res.send({error: 'currently-ramping'});
+					}
 				}
 				catch(error) {
 					res.send({error: error});
@@ -278,8 +329,13 @@ module.exports = {
 		server.get('/volumeDown', function (req, res) {
 			if (config.get('allowControl')) {
 				try {
-					spotify.volumeDown();
-				res.send({status: 'volume-down'});
+					if (global.RAMPING == false) { //don't set a volume if we're ramping
+						spotify.volumeDown();
+						res.send({status: 'volume-down'});
+					}
+					else {
+						res.send({error: 'currently-ramping'});
+					}
 				}
 				catch(error) {
 					res.send({error: error});
@@ -293,8 +349,13 @@ module.exports = {
 		server.get('/setVolume/:volume', function (req, res) {
 			if (config.get('allowControl')) {
 				try {
-					spotify.setVolume(req.params.volume);
-					res.send({status: 'setvolume'});
+					if (global.RAMPING == false) { //don't set a volume if we're ramping
+						spotify.setVolume(req.params.volume);
+						res.send({status: 'setvolume'});
+					}
+					else {
+						res.send({error: 'currently-ramping'});
+					}
 				}
 				catch(error) {
 					res.send({error: error});
@@ -305,11 +366,19 @@ module.exports = {
 			}
 		});
 
-		server.get('/rampVolume/:volume', function (req, res) {
+		server.get('/rampVolume/:volume/:changepercent/:ramptime', function (req, res) {
 			if (config.get('allowControl')) {
 				try {
-					rampVolume(parseInt(req.params.volume));
-					res.send({status: 'rampvolume'});
+					if (global.RAMPING == false) { //don't set a volume if we're ramping
+						let volume = parseInt(req.params.volume);
+						let changePercent = parseInt(req.params.changepercent);
+						let rampTime = parseInt(req.params.ramptime);
+						rampVolume(volume, changePercent, rampTime);
+						res.send({status: 'rampvolume'});
+					}
+					else {
+						res.send({error: 'currently-ramping'});
+					}
 				}
 				catch(error) {
 					res.send({error: error});
@@ -591,8 +660,10 @@ module.exports = {
 			socket.on('volumeUp', function () {
 				if (config.get('allowControl')) {
 					try {
-						spotify.volumeUp();
-						getState();
+						if (global.RAMPING == false) { //don't set a volume if we're ramping
+							spotify.volumeUp();
+							getState();
+						}
 					}
 					catch(error) {
 						socket.emit('error', error);
@@ -606,8 +677,10 @@ module.exports = {
 			socket.on('volumeDown', function () {
 				if (config.get('allowControl')) {
 					try {
-						spotify.volumeDown();
-						getState();
+						if (global.RAMPING == false) { //don't set a volume if we're ramping
+							spotify.volumeDown();
+							getState();
+						}
 					}
 					catch(error) {
 						socket.emit('error', error);
@@ -621,8 +694,10 @@ module.exports = {
 			socket.on('setVolume', function (volume) {
 				if (config.get('allowControl')) {
 					try {
-						spotify.setVolume(volume);
-						getState();
+						if (global.RAMPING == false) { //don't set a volume if we're ramping
+							spotify.setVolume(volume);
+							getState();
+						}
 					}
 					catch(error) {
 						socket.emit('error', error);
@@ -633,11 +708,13 @@ module.exports = {
 				}
 			});
 
-			socket.on('rampVolume', function (volume) {
+			socket.on('rampVolume', function (volume, changePercent, rampTime) {
 				if (config.get('allowControl')) {
 					try {
-						rampVolume(volume);
-						getState();
+						if (global.RAMPING == false) { //don't set a volume if we're ramping
+							rampVolume(volume, changePercent, rampTime);
+							getState();
+						}
 					}
 					catch(error) {
 						socket.emit('error', error);
