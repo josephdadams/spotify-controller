@@ -50,6 +50,7 @@
 	},
 	"build": {
 		"appId": "com.josephadams.spotify-controller",
+		"asar": false,
 		"mac": {
 			"category": "public.app-category.music",
 			"darkModeSupport": true
