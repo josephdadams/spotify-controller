@@ -1,47 +1,44 @@
-'use strict';
+'use strict'
 
-const { Notification, nativeImage } = require('electron');
+const { Notification, nativeImage } = require('electron')
 
-const _ = require('lodash');
+const _ = require('lodash')
 
-const config = require('./config.js');
-const API = require("./api.js");
+const config = require('./config.js')
+const API = require('./api.js')
 
 function showNotification() {
-	const icon = nativeImage.createFromDataURL(config.get('icon'));
-	
+	const icon = nativeImage.createFromDataURL(config.get('icon'))
+
 	if (STATUS.playbackInfo.playerState === 'Playing' && config.get('showNotifications')) {
-		const NOTIFICATION_TITLE = STATUS.playbackInfo.name;
-		const NOTIFICATION_BODY = STATUS.playbackInfo.artist;
-		new Notification(
-			{
-				title: NOTIFICATION_TITLE,
-				subtitle: NOTIFICATION_BODY,
-				icon: icon,
-				silent: true
-			}
-		).show();
+		const NOTIFICATION_TITLE = STATUS.playbackInfo.name
+		const NOTIFICATION_BODY = STATUS.playbackInfo.artist
+		new Notification({
+			title: NOTIFICATION_TITLE,
+			subtitle: NOTIFICATION_BODY,
+			icon: icon,
+			silent: true,
+		}).show()
 	}
 }
 
 module.exports = {
-	processNotification: function(event, info) {
+	processNotification: function (event, info) {
 		try {
 			if (config.get('allowedEvents').includes(event)) {
 				//do the stuff with the things
-				switch(event) {
+				switch (event) {
 					case 'com.spotify.client.PlaybackStateChanged':
-						STATUS.playbackInfo = _.mapKeys(info, (v, k) => _.camelCase(k));
-						API.sendUpdates();
-						showNotification();
-						break;
+						STATUS.playbackInfo = _.mapKeys(info, (v, k) => _.camelCase(k))
+						API.sendUpdates()
+						showNotification()
+						break
 					default:
-						break;
+						break
 				}
 			}
-		}
-		catch(error) {
-			console.log(error);
+		} catch (error) {
+			console.log(error)
 		}
 	},
 }

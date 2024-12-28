@@ -3,342 +3,419 @@
 spotify-controller has both a REST-based API as well as a socket.io API. Both run on Port `8801`.
 
 ## REST API
+
 All requests are HTTP GET.
 
-* `/version`:
+- `/version`:
 
-	Returns the version of spotify-controller currently running.
-	```javascript
-	{version: 0.1.0}
-	```
-* `/control_status`:
+  Returns the version of spotify-controller currently running.
 
-	Returns whether remote control is currently enabled or not in spotify-controller.
-	```javascript
-	{control_status: true}
-	```
+  ```javascript
+  {version: 0.1.0}
+  ```
 
-* `/state`:
+- `/control_status`:
 
-	Returns the current playback state and track information.
-	```javascript
-	{
-	playbackInfo: {
-		album: 'Living Hope',
-		albumArtist: 'Phil Wickham',
-		artist: 'Phil Wickham',
-		discNumber: 1,
-		duration: 327000,
-		hasArtwork: 1,
-		name: 'Living Hope',
-		playCount: 0,
-		playbackPosition: 0.0430000014603138,
-		playerState: 'Paused',
-		popularity: 58,
-		trackId: 'spotify:track:6nVm313QmsPlNllntTart1',
-		trackNumber: 2
-	},
-	state: {
-		track_id: 'spotify:track:6nVm313QmsPlNllntTart1',
-		volume: 63,
-		position: 0,
-		state: 'paused'
+  Returns whether remote control is currently enabled or not in spotify-controller.
+
+  ```javascript
+  {
+  	control_status: true
+  }
+  ```
+
+- `/state`:
+
+  Returns the current playback state and track information.
+
+  ```javascript
+  {
+  playbackInfo: {
+  	album: 'Living Hope',
+  	albumArtist: 'Phil Wickham',
+  	artist: 'Phil Wickham',
+  	discNumber: 1,
+  	duration: 327000,
+  	hasArtwork: 1,
+  	name: 'Living Hope',
+  	playCount: 0,
+  	playbackPosition: 0.0430000014603138,
+  	playerState: 'Paused',
+  	popularity: 58,
+  	trackId: 'spotify:track:6nVm313QmsPlNllntTart1',
+  	trackNumber: 2
+  },
+  state: {
+  	track_id: 'spotify:track:6nVm313QmsPlNllntTart1',
+  	volume: 63,
+  	position: 0,
+  	state: 'paused'
   	}
-	```
+  ```
 
-* `/play`:
+- `/play`:
 
-	Starts playback.
-	```javascript
-	{status: 'playing'}
-	```
+  Starts playback.
 
-* `/playTrack/[track]`:
+  ```javascript
+  {
+  	status: 'playing'
+  }
+  ```
 
-	Plays back a specific track.
-	[track] is the Spotify URI.
-	```javascript
-	{status: 'playing-track'}
-	```
+- `/playTrack/[track]`:
 
-* `/playTrackInContext/[track]/[album]`:
+  Plays back a specific track.
+  [track] is the Spotify URI.
 
-	Plays the track in the context of an album.
-	[track] is the Spotify URI for the track. [album] is the Album URI.
-	```javascript
-	{status: 'playing-track-in-context'}
-	```
+  ```javascript
+  {
+  	status: 'playing-track'
+  }
+  ```
 
-* `/pause`:
+- `/playTrackInContext/[track]/[album]`:
 
-	Pauses playback.
-	```javascript
-	{status: 'paused'}
-	```
+  Plays the track in the context of an album.
+  [track] is the Spotify URI for the track. [album] is the Album URI.
 
-* `/playToggle`:
+  ```javascript
+  {
+  	status: 'playing-track-in-context'
+  }
+  ```
 
-	Toggles playback between play/pause.
-	```javascript
-	{status: 'play-pause-toggled'}
-	```
+- `/pause`:
 
-* `/movePlayerPosition/[seconds]`:
+  Pauses playback.
 
-	Moves the player position of the currently playing track forward or backward, in seconds.
-	```javascript
-	{status: 'player-position-changed'}
-	```
+  ```javascript
+  {
+  	status: 'paused'
+  }
+  ```
 
-* `/setPlayerPosition/[seconds]`:
+- `/playToggle`:
 
-	Sets the player position of the currently playing track to the number of seconds specified.
-	```javascript
-	{status: 'player-position-changed'}
-	```
+  Toggles playback between play/pause.
 
-* `/next`:
+  ```javascript
+  {
+  	status: 'play-pause-toggled'
+  }
+  ```
 
-	Goes to next track.
-	```javascript
-	{status: 'next'}
-	```
+- `/movePlayerPosition/[seconds]`:
 
-* `/previous`:
+  Moves the player position of the currently playing track forward or backward, in seconds.
 
-	Goes to previous track.
-	```javascript
-	{status: 'previous'}
-	```
+  ```javascript
+  {
+  	status: 'player-position-changed'
+  }
+  ```
 
-* `/volumeUp`:
+- `/setPlayerPosition/[seconds]`:
 
-	Turns volume up.
-	```javascript
-	{status: 'volume-up'}
-	```
+  Sets the player position of the currently playing track to the number of seconds specified.
 
-* `/volumeDown`:
+  ```javascript
+  {
+  	status: 'player-position-changed'
+  }
+  ```
 
-	Turns volume down.
-	```javascript
-	{status: 'volume-down'}
-	```
+- `/next`:
 
-* `/setVolume/[volume]`:
+  Goes to next track.
 
-	Sets volume level (0-100).
-	```javascript
-	{status: 'setvolume'}
-	```
+  ```javascript
+  {
+  	status: 'next'
+  }
+  ```
 
-* `/rampVolume/[volume]/[changePercent]/[rampTime]`:
+- `/previous`:
 
-	Ramps volume level (0-100). First argument is the volume level as an integer. Second argument is the percentage to change the volume in each step. Third argument is the total time to take to finish the volume ramp.
-	```javascript
-	{status: 'rampvolume'}
-	```
+  Goes to previous track.
 
-* `/mute`:
+  ```javascript
+  {
+  	status: 'previous'
+  }
+  ```
 
-	Mutes volume.
-	```javascript
-	{status: 'volume-mute'}
-	```
+- `/volumeUp`:
 
-* `/unmute`:
+  Turns volume up.
 
-	Mutes volume.
-	```javascript
-	{status: 'volume-unmute'}
-	```
+  ```javascript
+  {
+  	status: 'volume-up'
+  }
+  ```
 
-* `/repeatOn`:
+- `/volumeDown`:
 
-	Turns on repeating.
-	```javascript
-	{status: 'repeat-on'}
-	```
+  Turns volume down.
 
-* `/repeatOff`:
+  ```javascript
+  {
+  	status: 'volume-down'
+  }
+  ```
 
-	Turns off repeating.
-	```javascript
-	{status: 'repeat-off'}
-	```
+- `/setVolume/[volume]`:
 
-* `/repeatToggle`:
+  Sets volume level (0-100).
 
-	Toggles repeating on/off.
-	```javascript
-	{status: 'repeat-toggle'}
-	```
+  ```javascript
+  {
+  	status: 'setvolume'
+  }
+  ```
 
-* `/shuffleOn`:
+- `/rampVolume/[volume]/[changePercent]/[rampTime]`:
 
-	Turns on shuffling.
-	```javascript
-	{status: shuffle-on'}
-	```
+  Ramps volume level (0-100). First argument is the volume level as an integer. Second argument is the percentage to change the volume in each step. Third argument is the total time to take to finish the volume ramp.
 
-* `/shuffleOff`:
+  ```javascript
+  {
+  	status: 'rampvolume'
+  }
+  ```
 
-	Turns off shuffling.
-	```javascript
-	{status: shuffle-off'}
-	```
+- `/mute`:
 
-* `/shuffleToggle`:
+  Mutes volume.
 
-	Toggles shuffling on/off.
-	```javascript
-	{status: 'shuffle-toggle'}
-	```
+  ```javascript
+  {
+  	status: 'volume-mute'
+  }
+  ```
+
+- `/unmute`:
+
+  Mutes volume.
+
+  ```javascript
+  {
+  	status: 'volume-unmute'
+  }
+  ```
+
+- `/repeatOn`:
+
+  Turns on repeating.
+
+  ```javascript
+  {
+  	status: 'repeat-on'
+  }
+  ```
+
+- `/repeatOff`:
+
+  Turns off repeating.
+
+  ```javascript
+  {
+  	status: 'repeat-off'
+  }
+  ```
+
+- `/repeatToggle`:
+
+  Toggles repeating on/off.
+
+  ```javascript
+  {
+  	status: 'repeat-toggle'
+  }
+  ```
+
+- `/shuffleOn`:
+
+  Turns on shuffling.
+
+  ```javascript
+  {status: shuffle-on'}
+  ```
+
+- `/shuffleOff`:
+
+  Turns off shuffling.
+
+  ```javascript
+  {status: shuffle-off'}
+  ```
+
+- `/shuffleToggle`:
+
+  Toggles shuffling on/off.
+
+  ```javascript
+  {
+  	status: 'shuffle-toggle'
+  }
+  ```
 
 ### Note
+
 It is possible to disable remote control within the context menu of the spotify-controller application. If this is done, you will receive this response when using the REST API:
+
 ```javascript
-{status: 'not-allowed'}
+{
+	status: 'not-allowed'
+}
 ```
 
 Errors may also be sent like this:
+
 ```javascript
-{error: 'error message'}
+{
+	error: 'error message'
+}
 ```
 
 ## socket.io API
 
 Upon connection, the server will emit the `control_status` event to let the client know whether or not remote control is available. This will be emitted any time it is changed. It can also be requested by the client at any time by emitting a `control_status` event. A boolean is returned, with `true` meaning it is enabled, and `false` being disabled.
 
-* `version`:
+- `version`:
 
-	Returns the version of spotify-controller currently running.
-	```javascript
-	'0.1.0'
-	```
-* `control_status`:
+  Returns the version of spotify-controller currently running.
 
-	Returns whether remote control is currently enabled or not in spotify-controller. This will also be emitted on-demand if remote control is disabled at spotify-controller.
-	```javascript
-	true
-	```
+  ```javascript
+  '0.1.0'
+  ```
 
-* `error`:
+- `control_status`:
 
-	Emitted whenever there is an error. Contains the error message as a string.
+  Returns whether remote control is currently enabled or not in spotify-controller. This will also be emitted on-demand if remote control is disabled at spotify-controller.
 
-* `state`:
+  ```javascript
+  true
+  ```
 
-	Returns the current playback state and track information. This is automatically emitted to all connected clients any time there is a playback state change.
-	```javascript
-	{
-	playbackInfo: {
-		album: 'Living Hope',
-		albumArtist: 'Phil Wickham',
-		artist: 'Phil Wickham',
-		discNumber: 1,
-		duration: 327000,
-		hasArtwork: 1,
-		name: 'Living Hope',
-		playCount: 0,
-		playbackPosition: 0.0430000014603138,
-		playerState: 'Paused',
-		popularity: 58,
-		trackId: 'spotify:track:6nVm313QmsPlNllntTart1',
-		trackNumber: 2
-	},
-	state: {
-		track_id: 'spotify:track:6nVm313QmsPlNllntTart1',
-		volume: 63,
-		position: 0,
-		state: 'paused'
+- `error`:
+
+  Emitted whenever there is an error. Contains the error message as a string.
+
+- `state`:
+
+  Returns the current playback state and track information. This is automatically emitted to all connected clients any time there is a playback state change.
+
+  ```javascript
+  {
+  playbackInfo: {
+  	album: 'Living Hope',
+  	albumArtist: 'Phil Wickham',
+  	artist: 'Phil Wickham',
+  	discNumber: 1,
+  	duration: 327000,
+  	hasArtwork: 1,
+  	name: 'Living Hope',
+  	playCount: 0,
+  	playbackPosition: 0.0430000014603138,
+  	playerState: 'Paused',
+  	popularity: 58,
+  	trackId: 'spotify:track:6nVm313QmsPlNllntTart1',
+  	trackNumber: 2
+  },
+  state: {
+  	track_id: 'spotify:track:6nVm313QmsPlNllntTart1',
+  	volume: 63,
+  	position: 0,
+  	state: 'paused'
   	}
-	```
+  ```
 
-* `ramping_state`:
+- `ramping_state`:
 
-	Returns the current volume ramping state. True or False. If the volume is currently ramping, you cannot change the volume through `volumeUp`, `volumeDown`, or `setVolume` until the ramp finishes.
+  Returns the current volume ramping state. True or False. If the volume is currently ramping, you cannot change the volume through `volumeUp`, `volumeDown`, or `setVolume` until the ramp finishes.
 
-* `play`:
+- `play`:
 
-	Starts playback.
+  Starts playback.
 
-* `playTrack`:
+- `playTrack`:
 
-	Plays back a specific track. First argument is the Spotify URI as a string.
+  Plays back a specific track. First argument is the Spotify URI as a string.
 
-* `playTrackInContext`:
+- `playTrackInContext`:
 
-	Plays the track in the context of an album. First argument is the Track Spotify URI. The second argument is the Album URI.
+  Plays the track in the context of an album. First argument is the Track Spotify URI. The second argument is the Album URI.
 
-* `pause`:
+- `pause`:
 
-	Pausess playback.
+  Pausess playback.
 
-* `playToggle`:
+- `playToggle`:
 
-	Toggles playback between play/pause.
+  Toggles playback between play/pause.
 
-* `movePlayerPosition`:
+- `movePlayerPosition`:
 
-	Moves the player position of the currently playing track forward or backward based on the first argument, in seconds.
+  Moves the player position of the currently playing track forward or backward based on the first argument, in seconds.
 
-* `setPlayerPosition`:
+- `setPlayerPosition`:
 
-	Sets the player position of the currently playing track to the number of seconds specified in the first argument.
+  Sets the player position of the currently playing track to the number of seconds specified in the first argument.
 
-* `next`:
+- `next`:
 
-	Goes to next track.
+  Goes to next track.
 
-* `previous`:
+- `previous`:
 
-	Goes to previous track.
+  Goes to previous track.
 
-* `volumeUp`:
+- `volumeUp`:
 
-	Turns volume up.
+  Turns volume up.
 
-* `volumeDown`:
+- `volumeDown`:
 
-	Turns volume down.
+  Turns volume down.
 
-* `setVolume`:
+- `setVolume`:
 
-	Sets volume level (0-100). First argument is the volume level as an integer.
+  Sets volume level (0-100). First argument is the volume level as an integer.
 
-* `rampVolume`:
+- `rampVolume`:
 
-	Ramps volume level (0-100). First argument is the volume level as an integer. Second argument is the percentage to change the volume in each step. Third argument is the total time to take to finish the volume ramp.
+  Ramps volume level (0-100). First argument is the volume level as an integer. Second argument is the percentage to change the volume in each step. Third argument is the total time to take to finish the volume ramp.
 
-* `mute`:
+- `mute`:
 
-	Mutes volume.
+  Mutes volume.
 
-* `unmute`:
+- `unmute`:
 
-	Mutes volume.
+  Mutes volume.
 
-* `repeatOn`:
+- `repeatOn`:
 
-	Turns on repeating.
+  Turns on repeating.
 
-* `repeatOff`:
+- `repeatOff`:
 
-	Turns off repeating.
+  Turns off repeating.
 
-* `repeatToggle`:
+- `repeatToggle`:
 
-	Toggles repeating on/off.
+  Toggles repeating on/off.
 
-* `shuffleOn`:
+- `shuffleOn`:
 
-	Turns on shuffling.
+  Turns on shuffling.
 
-* `shuffleOff`:
+- `shuffleOff`:
 
-	Turns off shuffling.
+  Turns off shuffling.
 
-* `shuffleToggle`:
+- `shuffleToggle`:
 
-	Toggles shuffling on/off.
+  Toggles shuffling on/off.

@@ -6,7 +6,7 @@ For API information, see [api.md](api.md).
 
 ## Install
 
-*macOS 10.10+ only, as the program uses AppleScript to control Spotify*
+_macOS 10.10+ only, as the program uses AppleScript to control Spotify_
 
 **macOS**
 

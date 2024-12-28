@@ -1,56 +1,55 @@
-var spotify = require('spotify-node-applescript');
-const express = require('express');
-const http = require('http');
-const socketio = require('socket.io');
+var spotify = require('spotify-node-applescript')
+const express = require('express')
+const http = require('http')
+const socketio = require('socket.io')
 
-const config = require('./config.js');
+const config = require('./config.js')
 
-const package_json = require('./package.json');
-const VERSION = package_json.version;
+const package_json = require('./package.json')
+const VERSION = package_json.version
 
-const osascript = require('osascript-promise');
+const osascript = require('osascript-promise')
 
-var server = null;
-var httpServer = null;
-var io = null;
+var server = null
+var httpServer = null
+var io = null
 
 function updateClients() {
-	io.sockets.emit('state_change', STATUS);
-	io.sockets.emit('ramping_state', global.RAMPING);
+	io.sockets.emit('state_change', STATUS)
+	io.sockets.emit('ramping_state', global.RAMPING)
 }
 
 function getState() {
-	updateClients();
+	updateClients()
 
-	spotify.getState(function(err, state) {
+	spotify.getState(function (err, state) {
 		if (state && state.position) {
-			STATUS.playbackInfo.playbackPosition = state.position;
-			STATUS.state = state;
+			STATUS.playbackInfo.playbackPosition = state.position
+			STATUS.state = state
 			//STATUS.playbackInfo.playerState = state.state;
 
-			spotify.isRepeating(function(err, repeating) {
-				STATUS.state.isRepeating = repeating;
+			spotify.isRepeating(function (err, repeating) {
+				STATUS.state.isRepeating = repeating
 
-				spotify.isShuffling(function(err, shuffling) {
-					STATUS.state.isShuffling = shuffling;
+				spotify.isShuffling(function (err, shuffling) {
+					STATUS.state.isShuffling = shuffling
 
-					updateClients();
-				});
-			});
+					updateClients()
+				})
+			})
 		}
-		return state;
-	});
+		return state
+	})
 }
 
 function rampVolume(volume, changePercent = 5, rampTime = 3) {
 	if (global.RAMPING == true) {
 		//currently ramping, cannot ramp again
-		return;
-	}
-	else {
-		global.RAMPING = true;
+		return
+	} else {
+		global.RAMPING = true
 		//STATUS.playbackInfo.playerState = `Ramping Volume to ${volume}`;
-		updateClients();
+		updateClients()
 
 		let rampScript = `tell application "Spotify"
 			set currentVolume to get sound volume
@@ -110,14 +109,14 @@ function rampVolume(volume, changePercent = 5, rampTime = 3) {
 			end if
 			set sound volume to desiredVolume
 			
-		end tell`;
-	
-		return osascript(rampScript).then(function(response) {
-			global.RAMPING = false;
-			updateClients();
-			getState();
-			return response;
-		});
+		end tell`
+
+		return osascript(rampScript).then(function (response) {
+			global.RAMPING = false
+			updateClients()
+			getState()
+			return response
+		})
 	}
 }
 
@@ -126,735 +125,655 @@ function movePlayerPosition(seconds) {
 		set currentPosition to get player position
 		set desiredPosition to (currentPosition + ${seconds})
 		set player position to desiredPosition
-	end tell`;
+	end tell`
 
-	STATUS.playbackInfo.playerState = `Moving Player Position ${seconds} seconds`;
+	STATUS.playbackInfo.playerState = `Moving Player Position ${seconds} seconds`
 
-	return osascript(positionScript).then(function(response) {
-		return response;
-	});
+	return osascript(positionScript).then(function (response) {
+		return response
+	})
 }
 
 function setPlayerPosition(seconds) {
 	let positionScript = `tell application "Spotify"
 		set desiredPosition to ${seconds}
 		set player position to desiredPosition
-	end tell`;
+	end tell`
 
-	STATUS.playbackInfo.playerState = `Setting Player Position ${seconds} seconds`;
+	STATUS.playbackInfo.playerState = `Setting Player Position ${seconds} seconds`
 
-	return osascript(positionScript).then(function(response) {
-		return response;
-	});
+	return osascript(positionScript).then(function (response) {
+		return response
+	})
 }
 
 module.exports = {
-	start: function(port) {
+	start: function (port) {
 		//starts the REST API
-		server = express();
+		server = express()
 
-		httpServer = new http.Server(server);
-		io = new socketio.Server(httpServer, { allowEIO3: true });
+		httpServer = new http.Server(server)
+		io = new socketio.Server(httpServer, { allowEIO3: true })
 
 		server.get('/version', function (req, res) {
-			res.send({version: VERSION});
-		});
+			res.send({ version: VERSION })
+		})
 
 		server.get('/control_status', function (req, res) {
-			res.send({control_status: config.get('allowControl')});
-		});
+			res.send({ control_status: config.get('allowControl') })
+		})
 
 		server.get('/state', function (req, res) {
-			res.send({playbackInfo: STATUS.playbackInfo, state: STATUS.state});
-		});
+			res.send({ playbackInfo: STATUS.playbackInfo, state: STATUS.state })
+		})
 
 		server.get('/play', function (req, res) {
 			if (config.get('allowControl')) {
 				try {
-					spotify.play();
-					res.send({status: 'playing'});
+					spotify.play()
+					res.send({ status: 'playing' })
+				} catch (error) {
+					res.send({ error: error })
 				}
-				catch(error) {
-					res.send({error: error});
-				}	
+			} else {
+				res.send({ status: 'not-allowed' })
 			}
-			else {
-				res.send({status: 'not-allowed'});
-			}
-		});
+		})
 
 		server.get('/playTrack/:track', function (req, res) {
 			if (config.get('allowControl')) {
 				try {
-					let track = req.params.track;
-					spotify.playTrack(track);
-					res.send({status: 'playing'});
+					let track = req.params.track
+					spotify.playTrack(track)
+					res.send({ status: 'playing' })
+				} catch (error) {
+					res.send({ error: error })
 				}
-				catch(error) {
-					res.send({error: error});
-				}		
+			} else {
+				res.send({ status: 'not-allowed' })
 			}
-			else {
-				res.send({status: 'not-allowed'});
-			}
-		});
+		})
 
 		server.get('/playTrackInContext/:track/:context', function (req, res) {
 			if (config.get('allowControl')) {
 				try {
-					let track = req.params.track;
-					let context = req.params.context;
-					spotify.playTrackInContext(track, context);
-					res.send({status: 'playing'});
+					let track = req.params.track
+					let context = req.params.context
+					spotify.playTrackInContext(track, context)
+					res.send({ status: 'playing' })
+				} catch (error) {
+					res.send({ error: error })
 				}
-				catch(error) {
-					res.send({error: error});
-				}				
+			} else {
+				res.send({ status: 'not-allowed' })
 			}
-			else {
-				res.send({status: 'not-allowed'});
-			}
-		});
+		})
 
 		server.get('/pause', function (req, res) {
 			if (config.get('allowControl')) {
 				try {
-					spotify.pause();
-					res.send({status: 'paused'});
+					spotify.pause()
+					res.send({ status: 'paused' })
+				} catch (error) {
+					res.send({ error: error })
 				}
-				catch(error) {
-					res.send({error: error});
-				}	
+			} else {
+				res.send({ status: 'not-allowed' })
 			}
-			else {
-				res.send({status: 'not-allowed'});
-			}
-		});
+		})
 
 		server.get('/playToggle', function (req, res) {
 			if (config.get('allowControl')) {
 				try {
-					spotify.playPause();
-					res.send({status: 'play-pause-toggled'});
+					spotify.playPause()
+					res.send({ status: 'play-pause-toggled' })
+				} catch (error) {
+					res.send({ error: error })
 				}
-				catch(error) {
-					res.send({error: error});
-				}
+			} else {
+				res.send({ status: 'not-allowed' })
 			}
-			else {
-				res.send({status: 'not-allowed'});
-			}
-		});
+		})
 
 		server.get('/movePlayerPosition/:seconds', function (req, res) {
 			if (config.get('allowControl')) {
 				try {
-					movePlayerPosition(req.params.seconds);
-					res.send({status: 'player-position-changed'});
+					movePlayerPosition(req.params.seconds)
+					res.send({ status: 'player-position-changed' })
+				} catch (error) {
+					res.send({ error: error })
 				}
-				catch(error) {
-					res.send({error: error});
-				}
+			} else {
+				res.send({ status: 'not-allowed' })
 			}
-			else {
-				res.send({status: 'not-allowed'});
-			}
-		});
+		})
 
 		server.get('/setPlayerPosition/:seconds', function (req, res) {
 			if (config.get('allowControl')) {
 				try {
-					setPlayerPosition(req.params.seconds);
-					res.send({status: 'player-position-changed'});
+					setPlayerPosition(req.params.seconds)
+					res.send({ status: 'player-position-changed' })
+				} catch (error) {
+					res.send({ error: error })
 				}
-				catch(error) {
-					res.send({error: error});
-				}
+			} else {
+				res.send({ status: 'not-allowed' })
 			}
-			else {
-				res.send({status: 'not-allowed'});
-			}
-		});
+		})
 
 		server.get('/next', function (req, res) {
 			if (config.get('allowControl')) {
 				try {
-					spotify.next();
-					res.send({status: 'next'});
+					spotify.next()
+					res.send({ status: 'next' })
+				} catch (error) {
+					res.send({ error: error })
 				}
-				catch(error) {
-					res.send({error: error});
-				}
+			} else {
+				res.send({ status: 'not-allowed' })
 			}
-			else {
-				res.send({status: 'not-allowed'});
-			}
-		});
+		})
 
 		server.get('/previous', function (req, res) {
 			if (config.get('allowControl')) {
 				try {
-					spotify.previous();
-					res.send({status: 'previous'});
+					spotify.previous()
+					res.send({ status: 'previous' })
+				} catch (error) {
+					res.send({ error: error })
 				}
-				catch(error) {
-					res.send({error: error});
-				}
+			} else {
+				res.send({ status: 'not-allowed' })
 			}
-			else {
-				res.send({status: 'not-allowed'});
-			}
-		});
+		})
 
 		server.get('/volumeUp', function (req, res) {
 			if (config.get('allowControl')) {
 				try {
-					if (global.RAMPING == false) { //don't set a volume if we're ramping
-						spotify.volumeUp();
-						res.send({status: 'volume-up'});
+					if (global.RAMPING == false) {
+						//don't set a volume if we're ramping
+						spotify.volumeUp()
+						res.send({ status: 'volume-up' })
+					} else {
+						res.send({ error: 'currently-ramping' })
 					}
-					else {
-						res.send({error: 'currently-ramping'});
-					}
+				} catch (error) {
+					res.send({ error: error })
 				}
-				catch(error) {
-					res.send({error: error});
-				}
+			} else {
+				res.send({ status: 'not-allowed' })
 			}
-			else {
-				res.send({status: 'not-allowed'});
-			}
-		});
+		})
 
 		server.get('/volumeDown', function (req, res) {
 			if (config.get('allowControl')) {
 				try {
-					if (global.RAMPING == false) { //don't set a volume if we're ramping
-						spotify.volumeDown();
-						res.send({status: 'volume-down'});
+					if (global.RAMPING == false) {
+						//don't set a volume if we're ramping
+						spotify.volumeDown()
+						res.send({ status: 'volume-down' })
+					} else {
+						res.send({ error: 'currently-ramping' })
 					}
-					else {
-						res.send({error: 'currently-ramping'});
-					}
+				} catch (error) {
+					res.send({ error: error })
 				}
-				catch(error) {
-					res.send({error: error});
-				}				
+			} else {
+				res.send({ status: 'not-allowed' })
 			}
-			else {
-				res.send({status: 'not-allowed'});
-			}
-		});
+		})
 
 		server.get('/setVolume/:volume', function (req, res) {
 			if (config.get('allowControl')) {
 				try {
-					if (global.RAMPING == false) { //don't set a volume if we're ramping
-						spotify.setVolume(req.params.volume);
-						res.send({status: 'setvolume'});
+					if (global.RAMPING == false) {
+						//don't set a volume if we're ramping
+						spotify.setVolume(req.params.volume)
+						res.send({ status: 'setvolume' })
+					} else {
+						res.send({ error: 'currently-ramping' })
 					}
-					else {
-						res.send({error: 'currently-ramping'});
-					}
+				} catch (error) {
+					res.send({ error: error })
 				}
-				catch(error) {
-					res.send({error: error});
-				}				
+			} else {
+				res.send({ status: 'not-allowed' })
 			}
-			else {
-				res.send({status: 'not-allowed'});
-			}
-		});
+		})
 
 		server.get('/rampVolume/:volume/:changepercent/:ramptime', function (req, res) {
 			if (config.get('allowControl')) {
 				try {
-					if (global.RAMPING == false) { //don't set a volume if we're ramping
-						let volume = parseInt(req.params.volume);
-						let changePercent = parseInt(req.params.changepercent);
-						let rampTime = parseInt(req.params.ramptime);
-						rampVolume(volume, changePercent, rampTime);
-						res.send({status: 'rampvolume'});
+					if (global.RAMPING == false) {
+						//don't set a volume if we're ramping
+						let volume = parseInt(req.params.volume)
+						let changePercent = parseInt(req.params.changepercent)
+						let rampTime = parseInt(req.params.ramptime)
+						rampVolume(volume, changePercent, rampTime)
+						res.send({ status: 'rampvolume' })
+					} else {
+						res.send({ error: 'currently-ramping' })
 					}
-					else {
-						res.send({error: 'currently-ramping'});
-					}
+				} catch (error) {
+					res.send({ error: error })
 				}
-				catch(error) {
-					res.send({error: error});
-				}				
+			} else {
+				res.send({ status: 'not-allowed' })
 			}
-			else {
-				res.send({status: 'not-allowed'});
-			}
-		});
+		})
 
 		server.get('/mute', function (req, res) {
 			if (config.get('allowControl')) {
 				try {
-					spotify.muteVolume();
-					res.send({status: 'volume-mute'});
+					spotify.muteVolume()
+					res.send({ status: 'volume-mute' })
+				} catch (error) {
+					res.send({ error: error })
 				}
-				catch(error) {
-					res.send({error: error});
-				}
+			} else {
+				res.send({ status: 'not-allowed' })
 			}
-			else {
-				res.send({status: 'not-allowed'});
-			}
-		});
+		})
 
 		server.get('/unmute', function (req, res) {
 			if (config.get('allowControl')) {
 				try {
-					spotify.unmuteVolume();
-					res.send({status: 'volume-unmute'});
+					spotify.unmuteVolume()
+					res.send({ status: 'volume-unmute' })
+				} catch (error) {
+					res.send({ error: error })
 				}
-				catch(error) {
-					res.send({error: error});
-				}
+			} else {
+				res.send({ status: 'not-allowed' })
 			}
-			else {
-				res.send({status: 'not-allowed'});
-			}
-		});
+		})
 
 		server.get('/repeatOn', function (req, res) {
 			if (config.get('allowControl')) {
 				try {
-					spotify.setRepeating(true);
-					res.send({status: 'repeat-on'});
+					spotify.setRepeating(true)
+					res.send({ status: 'repeat-on' })
+				} catch (error) {
+					res.send({ error: error })
 				}
-				catch(error) {
-					res.send({error: error});
-				}
+			} else {
+				res.send({ status: 'not-allowed' })
 			}
-			else {
-				res.send({status: 'not-allowed'});
-			}
-		});
+		})
 
 		server.get('/repeatOff', function (req, res) {
 			if (config.get('allowControl')) {
 				try {
-					spotify.setRepeating(false);
-					res.send({status: 'repeat-off'});
+					spotify.setRepeating(false)
+					res.send({ status: 'repeat-off' })
+				} catch (error) {
+					res.send({ error: error })
 				}
-				catch(error) {
-					res.send({error: error});
-				}				
+			} else {
+				res.send({ status: 'not-allowed' })
 			}
-			else {
-				res.send({status: 'not-allowed'});
-			}
-		});
+		})
 
 		server.get('/repeatToggle', function (req, res) {
 			if (config.get('allowControl')) {
 				try {
-					spotify.toggleRepeating();
-					res.send({status: 'repeat-toggle'});
+					spotify.toggleRepeating()
+					res.send({ status: 'repeat-toggle' })
+				} catch (error) {
+					res.send({ error: error })
 				}
-				catch(error) {
-					res.send({error: error});
-				}
+			} else {
+				res.send({ status: 'not-allowed' })
 			}
-			else {
-				res.send({status: 'not-allowed'});
-			}
-		});
+		})
 
 		server.get('/shuffleOn', function (req, res) {
 			if (config.get('allowControl')) {
 				try {
-					spotify.setShuffling(true);
-					res.send({status: 'shuffle-on'});
+					spotify.setShuffling(true)
+					res.send({ status: 'shuffle-on' })
+				} catch (error) {
+					res.send({ error: error })
 				}
-				catch(error) {
-					res.send({error: error});
-				}
+			} else {
+				res.send({ status: 'not-allowed' })
 			}
-			else {
-				res.send({status: 'not-allowed'});
-			}
-		});
+		})
 
 		server.get('/shuffleOff', function (req, res) {
 			if (config.get('allowControl')) {
 				try {
-					spotify.setShuffling(false);
-					res.send({status: 'shuffle-off'});
+					spotify.setShuffling(false)
+					res.send({ status: 'shuffle-off' })
+				} catch (error) {
+					res.send({ error: error })
 				}
-				catch(error) {
-					res.send({error: error});
-				}
+			} else {
+				res.send({ status: 'not-allowed' })
 			}
-			else {
-				res.send({status: 'not-allowed'});
-			}
-		});
+		})
 
 		server.get('/shuffleToggle', function (req, res) {
 			if (config.get('allowControl')) {
 				try {
-					spotify.toggleShuffling();
-					res.send({status: 'shuffle-toggle'});
+					spotify.toggleShuffling()
+					res.send({ status: 'shuffle-toggle' })
+				} catch (error) {
+					res.send({ error: error })
 				}
-				catch(error) {
-					res.send({error: error});
-				}
+			} else {
+				res.send({ status: 'not-allowed' })
 			}
-			else {
-				res.send({status: 'not-allowed'});
-			}
-		});
+		})
 
 		server.use(function (req, res) {
-			res.status(404).send({error: true, url: req.originalUrl + ' not found.'});
-		});
-		
+			res.status(404).send({ error: true, url: req.originalUrl + ' not found.' })
+		})
+
 		io.sockets.on('connection', (socket) => {
-			let ipAddr = socket.handshake.address;
-			socket.emit('control_status', config.get('allowControl'));
+			let ipAddr = socket.handshake.address
+			socket.emit('control_status', config.get('allowControl'))
 
-			socket.on('version', function() {
-				socket.emit('version', VERSION);
-			});
+			socket.on('version', function () {
+				socket.emit('version', VERSION)
+			})
 
-			socket.on('control_status', function() {
-				socket.emit('control_status', config.get('allowControl'));
-			});
+			socket.on('control_status', function () {
+				socket.emit('control_status', config.get('allowControl'))
+			})
 
-			socket.on('state', function() {
-				getState();
-			});
+			socket.on('state', function () {
+				getState()
+			})
 
 			socket.on('play', function () {
 				if (config.get('allowControl')) {
 					try {
-						spotify.play();
+						spotify.play()
+					} catch (error) {
+						socket.emit('error', error)
 					}
-					catch(error) {
-						socket.emit('error', error);
-					}
+				} else {
+					socket.emit('control_status', false)
 				}
-				else {
-					socket.emit('control_status', false);
-				}
-			});
-	
+			})
+
 			socket.on('pause', function () {
 				if (config.get('allowControl')) {
 					try {
-						spotify.pause();
+						spotify.pause()
+					} catch (error) {
+						socket.emit('error', error)
 					}
-					catch(error) {
-						socket.emit('error', error);
-					}
+				} else {
+					socket.emit('control_status', false)
 				}
-				else {
-					socket.emit('control_status', false);
-				}
-			});
-	
+			})
+
 			socket.on('playToggle', function () {
 				if (config.get('allowControl')) {
 					try {
-						spotify.playPause();
+						spotify.playPause()
+					} catch (error) {
+						socket.emit('error', error)
 					}
-					catch(error) {
-						socket.emit('error', error);
-					}
+				} else {
+					socket.emit('control_status', false)
 				}
-				else {
-					socket.emit('control_status', false);
-				}
-			});
+			})
 
 			socket.on('movePlayerPosition', function (seconds) {
 				if (config.get('allowControl')) {
 					try {
-						movePlayerPosition(seconds);
-						getState();
+						movePlayerPosition(seconds)
+						getState()
+					} catch (error) {
+						socket.emit('error', error)
 					}
-					catch(error) {
-						socket.emit('error', error);
-					}
+				} else {
+					socket.emit('control_status', false)
 				}
-				else {
-					socket.emit('control_status', false);
-				}
-			});
-			
+			})
+
 			socket.on('setPlayerPosition', function (seconds) {
 				if (config.get('allowControl')) {
 					try {
-						setPlayerPosition(seconds);
-						getState();
+						setPlayerPosition(seconds)
+						getState()
+					} catch (error) {
+						socket.emit('error', error)
 					}
-					catch(error) {
-						socket.emit('error', error);
-					}
+				} else {
+					socket.emit('control_status', false)
 				}
-				else {
-					socket.emit('control_status', false);
-				}
-			});	
+			})
 
 			socket.on('playtrack', function (track) {
 				if (config.get('allowControl')) {
 					try {
-						spotify.playTrack(track);
+						spotify.playTrack(track)
+					} catch (error) {
+						socket.emit('error', error)
 					}
-					catch(error) {
-						socket.emit('error', error);
-					}
+				} else {
+					socket.emit('control_status', false)
 				}
-				else {
-					socket.emit('control_status', false);
-				}
-			});
-	
+			})
+
 			socket.on('playtrackincontext', function (track, context) {
 				if (config.get('allowControl')) {
 					try {
-						spotify.playTrackInContext(track, context);
+						spotify.playTrackInContext(track, context)
+					} catch (error) {
+						socket.emit('error', error)
 					}
-					catch(error) {
-						socket.emit('error', error);
-					}
+				} else {
+					socket.emit('control_status', false)
 				}
-				else {
-					socket.emit('control_status', false);
-				}
-			});
-	
+			})
+
 			socket.on('next', function () {
 				if (config.get('allowControl')) {
 					try {
-						spotify.next();
+						spotify.next()
+					} catch (error) {
+						socket.emit('error', error)
 					}
-					catch(error) {
-						socket.emit('error', error);
-					}
+				} else {
+					socket.emit('control_status', false)
 				}
-				else {
-					socket.emit('control_status', false);
-				}
-			});
-	
+			})
+
 			socket.on('previous', function () {
 				if (config.get('allowControl')) {
 					try {
-						spotify.previous();
+						spotify.previous()
+					} catch (error) {
+						socket.emit('error', error)
 					}
-					catch(error) {
-						socket.emit('error', error);
-					}
+				} else {
+					socket.emit('control_status', false)
 				}
-				else {
-					socket.emit('control_status', false);
-				}
-			});
-	
+			})
+
 			socket.on('volumeUp', function () {
 				if (config.get('allowControl')) {
 					try {
-						if (global.RAMPING == false) { //don't set a volume if we're ramping
-							spotify.volumeUp();
-							getState();
+						if (global.RAMPING == false) {
+							//don't set a volume if we're ramping
+							spotify.volumeUp()
+							getState()
 						}
+					} catch (error) {
+						socket.emit('error', error)
 					}
-					catch(error) {
-						socket.emit('error', error);
-					}
+				} else {
+					socket.emit('control_status', false)
 				}
-				else {
-					socket.emit('control_status', false);
-				}
-			});
-	
+			})
+
 			socket.on('volumeDown', function () {
 				if (config.get('allowControl')) {
 					try {
-						if (global.RAMPING == false) { //don't set a volume if we're ramping
-							spotify.volumeDown();
-							getState();
+						if (global.RAMPING == false) {
+							//don't set a volume if we're ramping
+							spotify.volumeDown()
+							getState()
 						}
+					} catch (error) {
+						socket.emit('error', error)
 					}
-					catch(error) {
-						socket.emit('error', error);
-					}
+				} else {
+					socket.emit('control_status', false)
 				}
-				else {
-					socket.emit('control_status', false);
-				}
-			});
-	
+			})
+
 			socket.on('setVolume', function (volume) {
 				if (config.get('allowControl')) {
 					try {
-						if (global.RAMPING == false) { //don't set a volume if we're ramping
-							spotify.setVolume(volume);
-							getState();
+						if (global.RAMPING == false) {
+							//don't set a volume if we're ramping
+							spotify.setVolume(volume)
+							getState()
 						}
+					} catch (error) {
+						socket.emit('error', error)
 					}
-					catch(error) {
-						socket.emit('error', error);
-					}
+				} else {
+					socket.emit('control_status', false)
 				}
-				else {
-					socket.emit('control_status', false);
-				}
-			});
+			})
 
 			socket.on('rampVolume', function (volume, changePercent, rampTime) {
 				if (config.get('allowControl')) {
 					try {
-						if (global.RAMPING == false) { //don't set a volume if we're ramping
-							rampVolume(volume, changePercent, rampTime);
-							getState();
+						if (global.RAMPING == false) {
+							//don't set a volume if we're ramping
+							rampVolume(volume, changePercent, rampTime)
+							getState()
 						}
+					} catch (error) {
+						socket.emit('error', error)
 					}
-					catch(error) {
-						socket.emit('error', error);
-					}
+				} else {
+					socket.emit('control_status', false)
 				}
-				else {
-					socket.emit('control_status', false);
-				}
-			});
-	
+			})
+
 			socket.on('mute', function () {
 				if (config.get('allowControl')) {
 					try {
-						spotify.muteVolume();
-						getState();
+						spotify.muteVolume()
+						getState()
+					} catch (error) {
+						socket.emit('error', error)
 					}
-					catch(error) {
-						socket.emit('error', error);
-					}
+				} else {
+					socket.emit('control_status', false)
 				}
-				else {
-					socket.emit('control_status', false);
-				}
-			});
-	
+			})
+
 			socket.on('unmute', function () {
 				if (config.get('allowControl')) {
 					try {
-						spotify.unmuteVolume();
-						getState();
+						spotify.unmuteVolume()
+						getState()
+					} catch (error) {
+						socket.emit('error', error)
 					}
-					catch(error) {
-						socket.emit('error', error);
-					}
+				} else {
+					socket.emit('control_status', false)
 				}
-				else {
-					socket.emit('control_status', false);
-				}
-			});
-	
+			})
+
 			socket.on('repeatOn', function () {
 				if (config.get('allowControl')) {
 					try {
-						spotify.setRepeating(true);
-						getState();
+						spotify.setRepeating(true)
+						getState()
+					} catch (error) {
+						socket.emit('error', error)
 					}
-					catch(error) {
-						socket.emit('error', error);
-					}
+				} else {
+					socket.emit('control_status', false)
 				}
-				else {
-					socket.emit('control_status', false);
-				}
-			});
-	
+			})
+
 			socket.on('repeatOff', function () {
 				if (config.get('allowControl')) {
 					try {
-						spotify.setRepeating(false);
-						getState();
+						spotify.setRepeating(false)
+						getState()
+					} catch (error) {
+						socket.emit('error', error)
 					}
-					catch(error) {
-						socket.emit('error', error);
-					}
+				} else {
+					socket.emit('control_status', false)
 				}
-				else {
-					socket.emit('control_status', false);
-				}
-			});
-	
+			})
+
 			socket.on('repeatToggle', function () {
 				if (config.get('allowControl')) {
 					try {
-						spotify.toggleRepeating();
-						getState();
+						spotify.toggleRepeating()
+						getState()
+					} catch (error) {
+						socket.emit('error', error)
 					}
-					catch(error) {
-						socket.emit('error', error);
-					}
+				} else {
+					socket.emit('control_status', false)
 				}
-				else {
-					socket.emit('control_status', false);
-				}
-			});
-	
+			})
+
 			socket.on('shuffleOn', function () {
 				if (config.get('allowControl')) {
 					try {
-						spotify.setShuffling(true);
-						getState();
+						spotify.setShuffling(true)
+						getState()
+					} catch (error) {
+						socket.emit('error', error)
 					}
-					catch(error) {
-						socket.emit('error', error);
-					}
+				} else {
+					socket.emit('control_status', false)
 				}
-				else {
-					socket.emit('control_status', false);
-				}
-			});
-	
+			})
+
 			socket.on('shuffleOff', function () {
 				if (config.get('allowControl')) {
 					try {
-						spotify.setShuffling(false);
-						getState();
+						spotify.setShuffling(false)
+						getState()
+					} catch (error) {
+						socket.emit('error', error)
 					}
-					catch(error) {
-						socket.emit('error', error);
-					}
+				} else {
+					socket.emit('control_status', false)
 				}
-				else {
-					socket.emit('control_status', false);
-				}
-			});
-	
+			})
+
 			socket.on('shuffleToggle', function () {
 				if (config.get('allowControl')) {
 					try {
-						spotify.toggleShuffling();
-						getState();
+						spotify.toggleShuffling()
+						getState()
+					} catch (error) {
+						socket.emit('error', error)
 					}
-					catch(error) {
-						socket.emit('error', error);
-					}
+				} else {
+					socket.emit('control_status', false)
 				}
-				else {
-					socket.emit('control_status', false);
-				}
-			});
-		});
+			})
+		})
 
-		httpServer.listen(port);
-		console.log('REST/Socket.io API server started on: ' + port);
+		httpServer.listen(port)
+		console.log('REST/Socket.io API server started on: ' + port)
 	},
 
-	sendUpdates: function() {
-		getState();
+	sendUpdates: function () {
+		getState()
 	},
 
-	sendControlStatus: function() {
-		io.sockets.emit('control_status', config.get('allowControl'));
-	}
+	sendControlStatus: function () {
+		io.sockets.emit('control_status', config.get('allowControl'))
+	},
 }
