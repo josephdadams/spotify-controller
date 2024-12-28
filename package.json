@@ -1,23 +1,41 @@
 {
 	"name": "spotify-controller",
-	"productName": "Spotify Controller",
-	"version": "0.3.1",
+	"version": "1.0.0",
+	"author": "Joseph Adams <joseph@josephadams.dev>",
 	"description": "Control Spotify on MacOS over the network",
-	"license": "MIT",
-	"repository": "josephdadams/spotify-controller",
-	"author": {
-		"name": "Joseph Adams",
-		"email": "josephdadams@gmail.com",
-		"url": "https://josephadams.dev"
-	},
+	"main": "index.js",
 	"scripts": {
-		"postinstall": "electron-builder install-app-deps",
-		"lint": "xo",
-		"test": "npm run lint",
 		"start": "electron .",
-		"pack": "electron-builder --dir",
-		"dist": "electron-builder --macos",
-		"release": "np"
+		"format": "prettier -w .",
+		"lint:raw": "eslint --ext .ts --ext .js --ignore-pattern dist --ignore-pattern pkg",
+		"lint": "yarn lint:raw ."
+	},
+	"build": {
+		"appId": "com.josephadams.spotify-controller",
+		"productName": "spotify-controller",
+		"mac": {
+			"target": [
+				{
+					"target": "dmg",
+					"arch": [
+						"x64",
+						"arm64"
+					]
+				}
+			],
+			"category": "public.app-category.utilities",
+			"icon": "static/icon.png",
+			"identity": "Joseph Adams (R2PY2DC3A4)",
+			"extendInfo": {
+				"NSApplicationSupportsSecureRestorableState": true,
+				"electronTeamId": "R2PY2DC3A4"
+			},
+			"hardenedRuntime": true,
+			"gatekeeperAssess": true,
+			"entitlements": "entitlements.mac.plist",
+			"entitlementsInherit": "entitlements.mac.plist"
+		},
+		"generateUpdatesFilesForAllChannels": false
 	},
 	"dependencies": {
 		"electron-context-menu": "^3.0.0",
@@ -29,46 +47,13 @@
 		"express": "^4.18.1",
 		"lodash": "^4.17.21",
 		"osascript-promise": "^1.0.0",
-		"socket.io": "^4.5.1",
+		"socket.io": "^4.8.1",
 		"spotify-node-applescript": "^1.1.1"
 	},
 	"devDependencies": {
-		"electron": "^12.0.6",
-		"electron-builder": "^23.0.2",
-		"np": "^7.5.0",
-		"xo": "^0.39.1"
-	},
-	"xo": {
-		"envs": [
-			"node",
-			"browser"
-		]
-	},
-	"np": {
-		"publish": false,
-		"releaseDraft": false
-	},
-	"build": {
-		"appId": "com.josephadams.spotify-controller",
-		"asar": false,
-		"mac": {
-			"category": "public.app-category.music",
-			"darkModeSupport": true
-		},
-		"dmg": {
-			"iconSize": 160,
-			"contents": [
-				{
-					"x": 180,
-					"y": 170
-				},
-				{
-					"x": 480,
-					"y": 170,
-					"type": "link",
-					"path": "/Applications"
-				}
-			]
-		}
+		"@electron/notarize": "^2.5.0",
+		"electron": "^33.2.1",
+		"electron-builder": "^25.1.8",
+		"prettier": "^3.3.3"
 	}
 }
