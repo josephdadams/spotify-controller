@@ -95,7 +95,6 @@ app.on('activate', async () => {
 		mainWindow = await createMainWindow()
 	}
 })
-
 ;(async () => {
 	await app.whenReady()
 	//Menu.setApplicationMenu(menu);
