@@ -14,6 +14,20 @@ var server = null
 var httpServer = null
 var io = null
 
+const os = require('os')
+const { exec } = require('child_process')
+
+const isMac = os.platform() === 'darwin'
+const isWindows = os.platform() === 'win32'
+
+function openSpotifyUri(uri) {
+	if (isWindows) {
+		exec(`start ${uri}`, (err) => {
+			if (err) console.error('Failed to open Spotify URI:', err)
+		})
+	}
+}
+
 function updateClients() {
 	io.sockets.emit('state_change', STATUS)
 	io.sockets.emit('ramping_state', global.RAMPING)
@@ -170,7 +184,11 @@ module.exports = {
 		server.get('/play', function (req, res) {
 			if (config.get('allowControl')) {
 				try {
-					spotify.play()
+					if (isMac) {
+						spotify.play()
+					} else if (isWindows) {
+						openSpotifyUri('spotify:app')
+					}
 					res.send({ status: 'playing' })
 				} catch (error) {
 					res.send({ error: error })
@@ -184,7 +202,11 @@ module.exports = {
 			if (config.get('allowControl')) {
 				try {
 					let track = req.params.track
-					spotify.playTrack(track)
+					if (isMac) {
+						spotify.playTrack(track)
+					} else if (isWindows) {
+						openSpotifyUri(`spotify:track:${track}`)
+					}
 					res.send({ status: 'playing' })
 				} catch (error) {
 					res.send({ error: error })
@@ -199,7 +221,11 @@ module.exports = {
 				try {
 					let track = req.params.track
 					let context = req.params.context
-					spotify.playTrackInContext(track, context)
+					if (isMac) {
+						spotify.playTrackInContext(track, context)
+					} else if (isWindows) {
+						openSpotifyUri(`spotify:${context}:${track}`)
+					}
 					res.send({ status: 'playing' })
 				} catch (error) {
 					res.send({ error: error })
@@ -212,8 +238,12 @@ module.exports = {
 		server.get('/pause', function (req, res) {
 			if (config.get('allowControl')) {
 				try {
-					spotify.pause()
-					res.send({ status: 'paused' })
+					if (isMac) {
+						spotify.pause()
+						res.send({ status: 'paused' })
+					} else if (isWindows) {
+						res.send({ error: 'Pause not supported on Windows.' })
+					}
 				} catch (error) {
 					res.send({ error: error })
 				}
@@ -225,8 +255,12 @@ module.exports = {
 		server.get('/playToggle', function (req, res) {
 			if (config.get('allowControl')) {
 				try {
-					spotify.playPause()
-					res.send({ status: 'play-pause-toggled' })
+					if (isMac) {
+						spotify.playPause()
+						res.send({ status: 'play-pause-toggled' })
+					} else if (isWindows) {
+						res.send({ error: 'Play/Pause toggle not supported on Windows.' })
+					}
 				} catch (error) {
 					res.send({ error: error })
 				}
@@ -238,8 +272,12 @@ module.exports = {
 		server.get('/movePlayerPosition/:seconds', function (req, res) {
 			if (config.get('allowControl')) {
 				try {
-					movePlayerPosition(req.params.seconds)
-					res.send({ status: 'player-position-changed' })
+					if (isMac) {
+						movePlayerPosition(req.params.seconds)
+						res.send({ status: 'player-position-changed' })
+					} else if (isWindows) {
+						res.send({ error: 'Seek not supported on Windows.' })
+					}
 				} catch (error) {
 					res.send({ error: error })
 				}
@@ -251,8 +289,12 @@ module.exports = {
 		server.get('/setPlayerPosition/:seconds', function (req, res) {
 			if (config.get('allowControl')) {
 				try {
-					setPlayerPosition(req.params.seconds)
-					res.send({ status: 'player-position-changed' })
+					if (isMac) {
+						setPlayerPosition(req.params.seconds)
+						res.send({ status: 'player-position-changed' })
+					} else if (isWindows) {
+						res.send({ error: 'Seek not supported on Windows.' })
+					}
 				} catch (error) {
 					res.send({ error: error })
 				}
@@ -263,11 +305,11 @@ module.exports = {
 
 		server.get('/next', function (req, res) {
 			if (config.get('allowControl')) {
-				try {
+				if (isMac) {
 					spotify.next()
 					res.send({ status: 'next' })
-				} catch (error) {
-					res.send({ error: error })
+				} else if (isWindows) {
+					res.send({ error: 'Next track not supported on Windows.' })
 				}
 			} else {
 				res.send({ status: 'not-allowed' })
@@ -276,11 +318,11 @@ module.exports = {
 
 		server.get('/previous', function (req, res) {
 			if (config.get('allowControl')) {
-				try {
+				if (isMac) {
 					spotify.previous()
 					res.send({ status: 'previous' })
-				} catch (error) {
-					res.send({ error: error })
+				} else if (isWindows) {
+					res.send({ error: 'Previous track not supported on Windows.' })
 				}
 			} else {
 				res.send({ status: 'not-allowed' })
@@ -289,181 +331,102 @@ module.exports = {
 
 		server.get('/volumeUp', function (req, res) {
 			if (config.get('allowControl')) {
-				try {
-					if (global.RAMPING == false) {
-						//don't set a volume if we're ramping
-						spotify.volumeUp()
-						res.send({ status: 'volume-up' })
-					} else {
-						res.send({ error: 'currently-ramping' })
-					}
-				} catch (error) {
-					res.send({ error: error })
-				}
-			} else {
-				res.send({ status: 'not-allowed' })
-			}
+				if (isMac && global.RAMPING == false) spotify.volumeUp()
+				else return res.send({ error: 'Volume control not supported on this platform.' })
+				res.send({ status: 'volume-up' })
+			} else res.send({ status: 'not-allowed' })
 		})
 
 		server.get('/volumeDown', function (req, res) {
 			if (config.get('allowControl')) {
-				try {
-					if (global.RAMPING == false) {
-						//don't set a volume if we're ramping
-						spotify.volumeDown()
-						res.send({ status: 'volume-down' })
-					} else {
-						res.send({ error: 'currently-ramping' })
-					}
-				} catch (error) {
-					res.send({ error: error })
-				}
-			} else {
-				res.send({ status: 'not-allowed' })
-			}
+				if (isMac && global.RAMPING == false) spotify.volumeDown()
+				else return res.send({ error: 'Volume control not supported on this platform.' })
+				res.send({ status: 'volume-down' })
+			} else res.send({ status: 'not-allowed' })
 		})
 
 		server.get('/setVolume/:volume', function (req, res) {
 			if (config.get('allowControl')) {
-				try {
-					if (global.RAMPING == false) {
-						//don't set a volume if we're ramping
-						spotify.setVolume(req.params.volume)
-						res.send({ status: 'setvolume' })
-					} else {
-						res.send({ error: 'currently-ramping' })
-					}
-				} catch (error) {
-					res.send({ error: error })
-				}
-			} else {
-				res.send({ status: 'not-allowed' })
-			}
+				if (isMac && global.RAMPING == false) spotify.setVolume(req.params.volume)
+				else return res.send({ error: 'Volume control not supported on this platform.' })
+				res.send({ status: 'setvolume' })
+			} else res.send({ status: 'not-allowed' })
 		})
 
 		server.get('/rampVolume/:volume/:changepercent/:ramptime', function (req, res) {
 			if (config.get('allowControl')) {
-				try {
-					if (global.RAMPING == false) {
-						//don't set a volume if we're ramping
-						let volume = parseInt(req.params.volume)
-						let changePercent = parseInt(req.params.changepercent)
-						let rampTime = parseInt(req.params.ramptime)
-						rampVolume(volume, changePercent, rampTime)
-						res.send({ status: 'rampvolume' })
-					} else {
-						res.send({ error: 'currently-ramping' })
-					}
-				} catch (error) {
-					res.send({ error: error })
-				}
-			} else {
-				res.send({ status: 'not-allowed' })
-			}
+				if (isMac && global.RAMPING == false) {
+					let volume = parseInt(req.params.volume)
+					let changePercent = parseInt(req.params.changepercent)
+					let rampTime = parseInt(req.params.ramptime)
+					rampVolume(volume, changePercent, rampTime)
+				} else return res.send({ error: 'Ramp volume not supported on this platform.' })
+				res.send({ status: 'rampvolume' })
+			} else res.send({ status: 'not-allowed' })
 		})
 
 		server.get('/mute', function (req, res) {
 			if (config.get('allowControl')) {
-				try {
-					spotify.muteVolume()
-					res.send({ status: 'volume-mute' })
-				} catch (error) {
-					res.send({ error: error })
-				}
-			} else {
-				res.send({ status: 'not-allowed' })
-			}
+				if (isMac) spotify.muteVolume()
+				else return res.send({ error: 'Mute not supported on this platform.' })
+				res.send({ status: 'volume-mute' })
+			} else res.send({ status: 'not-allowed' })
 		})
 
 		server.get('/unmute', function (req, res) {
 			if (config.get('allowControl')) {
-				try {
-					spotify.unmuteVolume()
-					res.send({ status: 'volume-unmute' })
-				} catch (error) {
-					res.send({ error: error })
-				}
-			} else {
-				res.send({ status: 'not-allowed' })
-			}
+				if (isMac) spotify.unmuteVolume()
+				else return res.send({ error: 'Unmute not supported on this platform.' })
+				res.send({ status: 'volume-unmute' })
+			} else res.send({ status: 'not-allowed' })
 		})
 
 		server.get('/repeatOn', function (req, res) {
 			if (config.get('allowControl')) {
-				try {
-					spotify.setRepeating(true)
-					res.send({ status: 'repeat-on' })
-				} catch (error) {
-					res.send({ error: error })
-				}
-			} else {
-				res.send({ status: 'not-allowed' })
-			}
+				if (isMac) spotify.setRepeating(true)
+				else return res.send({ error: 'Repeat not supported on this platform.' })
+				res.send({ status: 'repeat-on' })
+			} else res.send({ status: 'not-allowed' })
 		})
 
 		server.get('/repeatOff', function (req, res) {
 			if (config.get('allowControl')) {
-				try {
-					spotify.setRepeating(false)
-					res.send({ status: 'repeat-off' })
-				} catch (error) {
-					res.send({ error: error })
-				}
-			} else {
-				res.send({ status: 'not-allowed' })
-			}
+				if (isMac) spotify.setRepeating(false)
+				else return res.send({ error: 'Repeat not supported on this platform.' })
+				res.send({ status: 'repeat-off' })
+			} else res.send({ status: 'not-allowed' })
 		})
 
 		server.get('/repeatToggle', function (req, res) {
 			if (config.get('allowControl')) {
-				try {
-					spotify.toggleRepeating()
-					res.send({ status: 'repeat-toggle' })
-				} catch (error) {
-					res.send({ error: error })
-				}
-			} else {
-				res.send({ status: 'not-allowed' })
-			}
+				if (isMac) spotify.toggleRepeating()
+				else return res.send({ error: 'Repeat toggle not supported on this platform.' })
+				res.send({ status: 'repeat-toggle' })
+			} else res.send({ status: 'not-allowed' })
 		})
 
 		server.get('/shuffleOn', function (req, res) {
 			if (config.get('allowControl')) {
-				try {
-					spotify.setShuffling(true)
-					res.send({ status: 'shuffle-on' })
-				} catch (error) {
-					res.send({ error: error })
-				}
-			} else {
-				res.send({ status: 'not-allowed' })
-			}
+				if (isMac) spotify.setShuffling(true)
+				else return res.send({ error: 'Shuffle not supported on this platform.' })
+				res.send({ status: 'shuffle-on' })
+			} else res.send({ status: 'not-allowed' })
 		})
 
 		server.get('/shuffleOff', function (req, res) {
 			if (config.get('allowControl')) {
-				try {
-					spotify.setShuffling(false)
-					res.send({ status: 'shuffle-off' })
-				} catch (error) {
-					res.send({ error: error })
-				}
-			} else {
-				res.send({ status: 'not-allowed' })
-			}
+				if (isMac) spotify.setShuffling(false)
+				else return res.send({ error: 'Shuffle not supported on this platform.' })
+				res.send({ status: 'shuffle-off' })
+			} else res.send({ status: 'not-allowed' })
 		})
 
 		server.get('/shuffleToggle', function (req, res) {
 			if (config.get('allowControl')) {
-				try {
-					spotify.toggleShuffling()
-					res.send({ status: 'shuffle-toggle' })
-				} catch (error) {
-					res.send({ error: error })
-				}
-			} else {
-				res.send({ status: 'not-allowed' })
-			}
+				if (isMac) spotify.toggleShuffling()
+				else return res.send({ error: 'Shuffle toggle not supported on this platform.' })
+				res.send({ status: 'shuffle-toggle' })
+			} else res.send({ status: 'not-allowed' })
 		})
 
 		server.use(function (req, res) {
@@ -488,280 +451,180 @@ module.exports = {
 
 			socket.on('play', function () {
 				if (config.get('allowControl')) {
-					try {
-						spotify.play()
-					} catch (error) {
-						socket.emit('error', error)
-					}
-				} else {
-					socket.emit('control_status', false)
-				}
+					if (isMac) spotify.play()
+					else if (isWindows) openSpotifyUri('spotify:app')
+					else socket.emit('error', 'Platform not supported')
+				} else socket.emit('control_status', false)
 			})
 
 			socket.on('pause', function () {
 				if (config.get('allowControl')) {
-					try {
-						spotify.pause()
-					} catch (error) {
-						socket.emit('error', error)
-					}
-				} else {
-					socket.emit('control_status', false)
-				}
+					if (isMac) spotify.pause()
+					else socket.emit('error', 'Pause not supported on Windows')
+				} else socket.emit('control_status', false)
 			})
 
 			socket.on('playToggle', function () {
 				if (config.get('allowControl')) {
-					try {
-						spotify.playPause()
-					} catch (error) {
-						socket.emit('error', error)
-					}
-				} else {
-					socket.emit('control_status', false)
-				}
+					if (isMac) spotify.playPause()
+					else socket.emit('error', 'Play/Pause toggle not supported on Windows')
+				} else socket.emit('control_status', false)
 			})
 
 			socket.on('movePlayerPosition', function (seconds) {
 				if (config.get('allowControl')) {
-					try {
+					if (isMac) {
 						movePlayerPosition(seconds)
 						getState()
-					} catch (error) {
-						socket.emit('error', error)
-					}
-				} else {
-					socket.emit('control_status', false)
-				}
+					} else socket.emit('error', 'Seek not supported on Windows')
+				} else socket.emit('control_status', false)
 			})
 
 			socket.on('setPlayerPosition', function (seconds) {
 				if (config.get('allowControl')) {
-					try {
+					if (isMac) {
 						setPlayerPosition(seconds)
 						getState()
-					} catch (error) {
-						socket.emit('error', error)
-					}
-				} else {
-					socket.emit('control_status', false)
-				}
+					} else socket.emit('error', 'Seek not supported on Windows')
+				} else socket.emit('control_status', false)
 			})
 
 			socket.on('playtrack', function (track) {
 				if (config.get('allowControl')) {
-					try {
-						spotify.playTrack(track)
-					} catch (error) {
-						socket.emit('error', error)
-					}
-				} else {
-					socket.emit('control_status', false)
-				}
+					if (isMac) spotify.playTrack(track)
+					else if (isWindows) openSpotifyUri(`spotify:track:${track}`)
+					else socket.emit('error', 'Platform not supported')
+				} else socket.emit('control_status', false)
 			})
 
 			socket.on('playtrackincontext', function (track, context) {
 				if (config.get('allowControl')) {
-					try {
-						spotify.playTrackInContext(track, context)
-					} catch (error) {
-						socket.emit('error', error)
-					}
-				} else {
-					socket.emit('control_status', false)
-				}
+					if (isMac) spotify.playTrackInContext(track, context)
+					else if (isWindows) openSpotifyUri(`spotify:${context}:${track}`)
+					else socket.emit('error', 'Platform not supported')
+				} else socket.emit('control_status', false)
 			})
 
 			socket.on('next', function () {
 				if (config.get('allowControl')) {
-					try {
-						spotify.next()
-					} catch (error) {
-						socket.emit('error', error)
-					}
-				} else {
-					socket.emit('control_status', false)
-				}
+					if (isMac) spotify.next()
+					else socket.emit('error', 'Next not supported on Windows')
+				} else socket.emit('control_status', false)
 			})
 
 			socket.on('previous', function () {
 				if (config.get('allowControl')) {
-					try {
-						spotify.previous()
-					} catch (error) {
-						socket.emit('error', error)
-					}
-				} else {
-					socket.emit('control_status', false)
-				}
+					if (isMac) spotify.previous()
+					else socket.emit('error', 'Previous not supported on Windows')
+				} else socket.emit('control_status', false)
 			})
 
 			socket.on('volumeUp', function () {
 				if (config.get('allowControl')) {
-					try {
-						if (global.RAMPING == false) {
-							//don't set a volume if we're ramping
-							spotify.volumeUp()
-							getState()
-						}
-					} catch (error) {
-						socket.emit('error', error)
-					}
-				} else {
-					socket.emit('control_status', false)
-				}
+					if (isMac && global.RAMPING == false) {
+						spotify.volumeUp()
+						getState()
+					} else socket.emit('error', 'Volume control not supported on this platform')
+				} else socket.emit('control_status', false)
 			})
 
 			socket.on('volumeDown', function () {
 				if (config.get('allowControl')) {
-					try {
-						if (global.RAMPING == false) {
-							//don't set a volume if we're ramping
-							spotify.volumeDown()
-							getState()
-						}
-					} catch (error) {
-						socket.emit('error', error)
-					}
-				} else {
-					socket.emit('control_status', false)
-				}
+					if (isMac && global.RAMPING == false) {
+						spotify.volumeDown()
+						getState()
+					} else socket.emit('error', 'Volume control not supported on this platform')
+				} else socket.emit('control_status', false)
 			})
 
 			socket.on('setVolume', function (volume) {
 				if (config.get('allowControl')) {
-					try {
-						if (global.RAMPING == false) {
-							//don't set a volume if we're ramping
-							spotify.setVolume(volume)
-							getState()
-						}
-					} catch (error) {
-						socket.emit('error', error)
-					}
-				} else {
-					socket.emit('control_status', false)
-				}
+					if (isMac && global.RAMPING == false) {
+						spotify.setVolume(volume)
+						getState()
+					} else socket.emit('error', 'Volume control not supported on this platform')
+				} else socket.emit('control_status', false)
 			})
 
 			socket.on('rampVolume', function (volume, changePercent, rampTime) {
 				if (config.get('allowControl')) {
-					try {
-						if (global.RAMPING == false) {
-							//don't set a volume if we're ramping
-							rampVolume(volume, changePercent, rampTime)
-							getState()
-						}
-					} catch (error) {
-						socket.emit('error', error)
-					}
-				} else {
-					socket.emit('control_status', false)
-				}
+					if (isMac && global.RAMPING == false) {
+						rampVolume(volume, changePercent, rampTime)
+						getState()
+					} else socket.emit('error', 'Ramp volume not supported on this platform')
+				} else socket.emit('control_status', false)
 			})
 
 			socket.on('mute', function () {
 				if (config.get('allowControl')) {
-					try {
+					if (isMac) {
 						spotify.muteVolume()
 						getState()
-					} catch (error) {
-						socket.emit('error', error)
-					}
-				} else {
-					socket.emit('control_status', false)
-				}
+					} else socket.emit('error', 'Mute not supported on this platform')
+				} else socket.emit('control_status', false)
 			})
 
 			socket.on('unmute', function () {
 				if (config.get('allowControl')) {
-					try {
+					if (isMac) {
 						spotify.unmuteVolume()
 						getState()
-					} catch (error) {
-						socket.emit('error', error)
-					}
-				} else {
-					socket.emit('control_status', false)
-				}
+					} else socket.emit('error', 'Unmute not supported on this platform')
+				} else socket.emit('control_status', false)
 			})
 
 			socket.on('repeatOn', function () {
 				if (config.get('allowControl')) {
-					try {
+					if (isMac) {
 						spotify.setRepeating(true)
 						getState()
-					} catch (error) {
-						socket.emit('error', error)
-					}
-				} else {
-					socket.emit('control_status', false)
-				}
+					} else socket.emit('error', 'Repeat not supported on this platform')
+				} else socket.emit('control_status', false)
 			})
 
 			socket.on('repeatOff', function () {
 				if (config.get('allowControl')) {
-					try {
+					if (isMac) {
 						spotify.setRepeating(false)
 						getState()
-					} catch (error) {
-						socket.emit('error', error)
-					}
-				} else {
-					socket.emit('control_status', false)
-				}
+					} else socket.emit('error', 'Repeat not supported on this platform')
+				} else socket.emit('control_status', false)
 			})
 
 			socket.on('repeatToggle', function () {
 				if (config.get('allowControl')) {
-					try {
+					if (isMac) {
 						spotify.toggleRepeating()
 						getState()
-					} catch (error) {
-						socket.emit('error', error)
-					}
-				} else {
-					socket.emit('control_status', false)
-				}
+					} else socket.emit('error', 'Repeat toggle not supported on this platform')
+				} else socket.emit('control_status', false)
 			})
 
 			socket.on('shuffleOn', function () {
 				if (config.get('allowControl')) {
-					try {
+					if (isMac) {
 						spotify.setShuffling(true)
 						getState()
-					} catch (error) {
-						socket.emit('error', error)
-					}
-				} else {
-					socket.emit('control_status', false)
-				}
+					} else socket.emit('error', 'Shuffle not supported on this platform')
+				} else socket.emit('control_status', false)
 			})
 
 			socket.on('shuffleOff', function () {
 				if (config.get('allowControl')) {
-					try {
+					if (isMac) {
 						spotify.setShuffling(false)
 						getState()
-					} catch (error) {
-						socket.emit('error', error)
-					}
-				} else {
-					socket.emit('control_status', false)
-				}
+					} else socket.emit('error', 'Shuffle not supported on this platform')
+				} else socket.emit('control_status', false)
 			})
 
 			socket.on('shuffleToggle', function () {
 				if (config.get('allowControl')) {
-					try {
+					if (isMac) {
 						spotify.toggleShuffling()
 						getState()
-					} catch (error) {
-						socket.emit('error', error)
-					}
-				} else {
-					socket.emit('control_status', false)
-				}
+					} else socket.emit('error', 'Shuffle toggle not supported on this platform')
+				} else socket.emit('control_status', false)
 			})
 		})
 

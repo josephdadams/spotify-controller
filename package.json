@@ -1,8 +1,8 @@
 {
 	"name": "spotify-controller",
-	"version": "1.0.0",
+	"version": "2.0.0",
 	"author": "Joseph Adams <joseph@josephadams.dev>",
-	"description": "Control Spotify on MacOS over the network",
+	"description": "Control Spotify over the network",
 	"main": "index.js",
 	"scripts": {
 		"start": "electron .",
@@ -34,6 +34,18 @@
 			"gatekeeperAssess": true,
 			"entitlements": "entitlements.mac.plist",
 			"entitlementsInherit": "entitlements.mac.plist"
+		},
+		"win": {
+			"target": [
+				"nsis"
+			],
+			"icon": "static/icon.ico",
+			"publisherName": "Joseph Adams"
+		},
+		"nsis": {
+			"oneClick": false,
+			"perMachine": false,
+			"allowToChangeInstallationDirectory": true
 		},
 		"generateUpdatesFilesForAllChannels": false
 	},
